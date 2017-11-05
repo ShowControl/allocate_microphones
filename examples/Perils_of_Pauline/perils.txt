@@ -1,0 +1,39 @@
+[show The Perils of Pauline]  // name the show
+
+[character Pauline]
+[character Harry Marvin]
+
+[actor Pearl White]
+[actor Crane Wilbur]
+
+[role]
+actor=Pearl White
+character=Pauline
+
+[role]
+actor=Crane Wilbur
+character=Harry Marvin
+
+[page 1]
+[act 1]
+[scene 1]
+[enter Pauline]
+[song Where is My Hero]
+[page 2]
+[enter Harry Marvin]
+[song I Have Come to Save You]
+[page 3]
+[exit Harry Marvin]
+[enter Raymond Owen]
+[begin sound Train Approaching]
+[page 4]
+[enter Harry Marvin]
+[quiet Raymond Owen]
+[page 5]
+[end sound Train Approaching]
+[exit Raymond Owen]
+[page 6]
+[exit Pauline]
+[exit Harry Marvin]
+[end show]
+

@@ -1,0 +1,9 @@
+	The changelog is in the git history.
+	
+	April 24, 2012
+	Add a cue number to the timeline.
+
+January 28, 2012
+	Added some debugging output to help catch actors
+	with no characters assigned.
+

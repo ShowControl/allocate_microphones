@@ -1,0 +1,1 @@
+dist_bin_SCRIPTS = allocate_microphones

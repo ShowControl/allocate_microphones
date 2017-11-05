@@ -1,0 +1,68 @@
+.TH allocate_microphones 1 "October 30, 2017"
+.SH NAME
+allocate_microphones --- allocate microphones to actors in a live stage play
+.SH SYNTAX
+allocate_microphones <input_file> 
+.SH AVAILABILITY
+The program should work on any computer system which
+provides Python 3 or later, but it has only been tested
+on GNU/Linux.
+.SH DESCRIPTION
+Community Theatre production companies are often long on
+actors who want to sing and dance on stage, but short on
+support equipment such as microphones.  This program
+computes the minimum number of microphones needed for the
+play, and arranges to swap them between actors so that
+every actor has a microphone when he needs one.
+.P
+More detail about what the program does is in the README file.
+.SH OPTIONS
+.IP --help
+Prints a brief description of the program and how to invoke it.
+.IP --version
+Prints the version number of the program
+.IP --verbose number
+Controls the quantity of output.  The default, which is 1,
+provides summary information.  0 suppresses the summary.
+.IP --trace trace_file
+The specified file receives a large quantity of trace information
+as the program runs.  This is intended to provide insight into
+the program's operation, which may be needed to fix a problem.
+.IP --output-directory directory
+The directory into which to write the output files.  Default is
+the current directory.
+.IP --output-root name
+The beginning of each output file name.  Default is the part of
+the input file name after the directory, or the whole input file
+name if no directory is specified.
+.SH EXAMPLES
+.IP "allocate_microphones The_Music_Man.txt"
+Read the file "The_Music_Man.txt" and write several files which
+describe how to allocate microphones between the actors.
+.SH NOTES
+Each of the tables produced by allocate_microphones is written 
+to its own file in the output directory.  The file names
+begin with the output root name.  See the README for more details.
+.SH MESSAGES and EXIT CALLS
+The program does careful checking of the syntax of the input
+file, and outputs an informative error message when the syntax
+is violated.  If you encounter an error that is not well-reported,
+please contact the author since this is regarded as a bug.
+.SH AUTHOR
+John Sauter, version 2.1, November 4, 2017
+.SH HISTORY
+The major change since version 1 is the addition of microphone
+groups.
+.SH RESOURCES
+The program requires python version 3 or later to run.
+To convert the tables into PDF files, LaTeX is required.
+.SH FILES
+allocate_microphones produces several output files.
+See the README file for details.
+.SH BUGS
+None known at the time of this writing.
+.SH CAVEATS
+None known at the time of this writing, but see the README file
+for details about how the program operates.
+.SH SEE ALSO
+pdflatex

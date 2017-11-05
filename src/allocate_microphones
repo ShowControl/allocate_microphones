@@ -1,0 +1,2495 @@
+#!/usr/bin/python3
+# -*- coding: utf-8
+#
+# allocate_microphones is a program to allocate microphones
+# between actors in a live stage play.
+
+#   Copyright © 2017 by John Sauter
+#                      <John_Sauter@systemeyescomputerstore.com>
+
+#   This program is free software: you can redistribute it and/or
+#   modify it under the terms of the GNU General Public License as
+#   published by the Free Software Foundation, either version 3
+#   of the License, or (at your option) any later version.
+
+#   This program is distributed in the hope that it will be
+#   useful, but WITHOUT ANY WARRANTY; without even the implied
+#   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#   See the GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public
+#   License along with this program.  If you did not,
+#   see <http://www.gnu.org/licenses/>.
+
+#   The author's contact information is as follows:
+#     John Sauter
+#     System Eyes Computer Store
+#     20A Northwest Blvd.  Ste 345
+#     Nashua, NH  03063-4066
+#     telephone: (603) 424-1188
+#     e-mail: John_Sauter@systemeyescomputerstore.com
+
+import sys
+import re
+import pprint
+import argparse
+import os.path
+
+parser = argparse.ArgumentParser (
+  formatter_class=argparse.RawDescriptionHelpFormatter,
+  description='Allocate microphones between actors for a live ' +
+  'stage play.',
+  epilog='Copyright © 2017 by John Sauter' + '\n' +
+    'License GPL3+: GNU GPL version 3 or later; ' + '\n' +
+    'see <http://gnu.org/licenses/gpl.html> for the full text' +
+    ' of the license.' + '\n' +
+    'This is free software: you are free to change' +
+    ' and redistribute it. ' + '\n' +
+    'There is NO WARRANTY, to the extent permitted by law. ' +
+    '\n' + '\n'
+    'The input file describes the play. ' + '\n'
+    'The output is several tables, each in its own file, ' +
+    '\n' + 
+    'which describe how the ' +
+    'microphones are shared between actors.')
+parser.add_argument ('input_file',
+                     help='the description of the play')
+parser.add_argument ('--version', action='version', 
+                     version='allocate_microphones 2.1 2017-11-04',
+                     help='print the version number and exit')
+parser.add_argument ('--trace', metavar='trace_file',
+                     help='write trace output to the specified file')
+parser.add_argument ('--output_root', metavar='output_root',
+                     help='root name for output files')
+parser.add_argument ('--output-directory', metavar='output_directory',
+                     help='directory for writing output files')
+parser.add_argument ('--verbose', type=int, metavar='verbosity level',
+                     help='control the amount of output from the program: ' +
+                     '1 is normal, 0 suppresses summary messages')
+
+do_trace = 0
+tracefile = ""
+output_root = ""
+output_directory = ""
+verbosity_level = 1
+
+microphone_switch_time = 35
+min_microphone_off_time = 0
+extra_microphones = 0
+error_counter = 0
+
+# Actors is a list of dictionaries.  Actors are
+# listed in the order encountered.
+actors = []
+
+# Characters is a dictionary of dictionaries,
+# keyed by the character's name.
+characters = {}
+
+# Rolls is a dictionary keyed by actor names,
+# in which the corresponding values are a list
+# of references to character dictionaries.
+rolls = {}
+
+# groups is the set of group names.  The empty
+# string is the default group and so is always
+# present.
+groups = set ("")
+groups.add ("")
+
+current_code = ""
+
+# Processing routines for each code.
+#
+
+# The name of the stage play
+show_name = ""
+def show_start(value):
+  global show_name
+  show_name = value
+  return
+ 
+def show_end():
+  return
+
+# The maximum number of microphones available
+microphone_limit = 0
+def microphones_start(value):
+  global microphone_limit
+  global error_counter
+  try:
+    microphone_limit = int(value)
+  except ValueError:
+    print ("Number of microphones must be an integer, not " + value)
+    error_counter = error_counter + 1
+  return
+
+def microphones_end():
+  return
+
+# A character in the play
+current_character = ""
+def character_start (value):
+  global current_character
+  global error_counter
+  if (value in characters):
+    print ("Character " + value + " already defined.")
+    error_counter = error_counter + 1
+    return
+  characters [value] = {}
+  the_character = characters [value]
+  the_character ["name"] = value
+  the_character ["group"] = ""
+  current_character = the_character
+  return
+
+def character_keyword_value (keyword, value):
+  global current_character
+  global error_counter
+  global groups
+  if (keyword == "group"):
+    current_character ["group"] = value
+    groups.add (value)
+    return
+  print ("Unknown character clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+  
+def character_end ():
+  return
+
+# An actor in the performance
+current_actor = ""
+def actor_start (value):
+  global current_actor
+  the_actor = {}
+  the_actor ["name"] = value
+  the_actor ["old_microphone"] = 0
+  the_actor ["reenters"] = False
+  the_actor ["reenters_before_intermission"] = False
+  actors.append(the_actor)
+  current_actor = the_actor
+  return
+
+def actor_keyword_value (keyword, value):
+  global current_actor
+  global error_counter
+  if (keyword == "microphone"):
+# Specify the preferred microphone for this actor
+    try:
+      current_actor ["old_microphone"] = int(value)
+    except ValueError:
+      print ("Preferred microphone for an actor must be an integer," +
+             "not " + value)
+      error_counter = error_counter + 1
+    current_actor ["reenters"] = True
+    current_actor ["reenters_before_intermission"] = True
+    return
+  print ("Unknown actor clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+
+def actor_end ():
+  return
+
+# Specify which characters are performed by an actor
+role_actor = ""
+def role_start(value):
+  global role_actor
+  role_actor = ""
+  return
+
+def role_keyword_value (keyword, value):
+  global role_actor
+  global actors
+  global error_counter
+  if (keyword == "actor"):
+    role_actor = value
+    actor_missing = 1
+    for the_actor in actors:
+      if (the_actor ["name"] == value):
+        actor_missing = 0
+        break
+    if (actor_missing == 1):
+      the_actor = {}
+      the_actor ["name"] = value
+      the_actor ["old_microphone"] = 0
+      the_actor ["reenters"] = False
+      the_actor ["reenters_before_intermission"] = False
+      actors.append(the_actor)
+    return
+  if (keyword == "character"):
+    if (role_actor not in rolls):
+      rolls [role_actor] = [] 
+    the_roll = rolls [role_actor]
+    if (value not in characters):
+      characters [value] = {}
+      the_character = characters [value]
+      the_character ["name"] = value
+      the_character ["group"] = ""
+    the_roll.append(characters[value])
+    return
+  print ("Unknown roll clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+
+def role_end():
+  return
+
+# Find the actor who plays a named character
+# if none is assigned, make one up.
+#
+created_actor = 0
+def find_actor (character_name):
+  global created_actor
+  global actors
+  for actor_name in rolls.keys():
+    for the_character in rolls [actor_name]:
+      if (the_character ["name"] == character_name):
+        for the_actor in actors:
+          if (the_actor ["name"] == actor_name):
+            return the_actor
+  created_actor = created_actor + 1
+  actor_name = "Uncast #" + str(created_actor) 
+  rolls [actor_name] = []
+  the_actor = {}
+  the_actor ["name"] = actor_name
+  the_actor ["old_microphone"] = 0
+  the_actor ["reenters"] = False
+  the_actor ["reenters_before_intermission"] = False
+  actors.append(the_actor)
+  if (character_name not in characters):
+    characters [character_name] = {}
+    the_character = characters [character_name]
+    the_character ["name"] = character_name
+  the_roll = rolls [actor_name]
+  the_roll.append(characters[character_name])
+  if (do_trace == 1):
+    tracefile.write ("Actor " + actor_name + " created for " +
+                     character_name + "\n")
+  return the_actor
+
+# Convert a text string of the form <number>, <number><suffix>,
+# <number><separator><number> or <number><separator><number><separator><number>
+# into a sortable string.  Do this by
+# extending the numbers to four digits, and providing dashes and zeros
+# to convert the first three forms into the last form.
+# The first form is used when there is only one action on a page.
+# The second form is used for page numbers in ordinary plays, to mark
+# positions on a page.  The third and fourth forms are used in plays
+# that consist of just music, to mark positions by page number and
+# measure number, or by page number, song number and measure number.
+def make_pageno (value):
+  global error_counter
+  if (do_trace == 1):
+    tracefile.write ("Turning page " + value + " into" +
+                     " internal form.\n")
+  match_digits = re.match (
+    "^(?P<digits>[0-9]+)(?P<suffix>.*)$", value)
+  if (match_digits):
+    if (do_trace == 1):
+      tracefile.write ("Has leading digits.\n")
+    the_digits = match_digits.groupdict() ["digits"]
+    suffix = match_digits.groupdict() ["suffix"]
+    if (len(the_digits) < 1):
+      print ("Page numbers must at least start with a number: " +
+             value)
+      error_counter = error_counter + 1
+    while (len(the_digits) < 4):
+      the_digits = "0" + the_digits
+    trailing_digits = re.match (
+      "^(?P<sep>.+?)(?P<trail>[0-9]+)$", suffix)
+    if (trailing_digits):
+      if (do_trace == 1):
+        tracefile.write ("Has trailing digits.\n")
+      trail_digits = trailing_digits.groupdict() ["trail"]
+      sep = trailing_digits.groupdict() ["sep"]
+      while (len(trail_digits) < 4):
+        trail_digits = "0" + trail_digits
+      middle_digits = re.match (
+        "^(?P<sep1>[^0-9]+)(?P<mid>[0-9]+)(?P<sep2>[^[0-9]+)$", sep)
+      if (middle_digits):
+        if (do_trace == 1):
+          tracefile.write ("Has middle digits.\n")
+        mid_digits = middle_digits.groupdict() ["mid"]
+        sep1 = middle_digits.groupdict() ["sep1"]
+        sep2 = middle_digits.groupdict() ["sep2"]
+        while (len(mid_digits) < 4):
+          mid_digits = "0" + mid_digits
+        if (do_trace == 1):
+          tracefile.write (
+            "Return 4: " + the_digits + sep1 + mid_digits + sep2 +
+            trail_digits + "\n")
+        return the_digits + sep1 + mid_digits + sep2 + trail_digits
+      if (do_trace == 1):
+        tracefile.write (
+          "Return 1: " + the_digits + sep1 + "0000-" + trail_digits + "\n")
+      return the_digits + sep1 + "0000-" + trail_digits
+    if (suffix == ""):
+      suffix = "-"
+    if (do_trace == 1):
+      tracefile.write (
+        "Return 2: " + the_digits + suffix + "0000-0000" + "\n")
+    return the_digits + suffix + "0000-0000"
+  if (do_trace == 1):
+    tracefile.write (
+      "Return 3: " + value + "-0000-0000" + "\n")
+  return value + "-0000-0000"
+
+current_page = "0000"
+#
+# The pages dictionary has an entry for each page.
+# the index is the page number, the value is a
+# dictionary.  This page-specific dictionary
+# has keys "exit", and "quiet" which are lists
+# of characters.
+# "enter", "speaks" and "speaking" are lists of
+# [character, speaks, group],
+# where speaks is a code: 0 means does not speak,
+# 3 means speaks until quieted, ....
+# 
+# "intermission" and "end" are empty lists.
+# "songs" is a list of song information for the
+# page: each element is a two-element list,
+# consisting of a song name and a code.
+# Code 0 means the song ends on this page, 
+# 1 means the song appears only on this page, and 
+# 2 means the song starts on this page.
+# "act" and "scene" are a list of the acts
+# and scenes that start on this page.
+# Only one of each is expected.
+# "sounds" is a list of sound effects 
+# for this page, coded the same as songs.
+# "duration" is the time this page takes to perform,
+# in seconds.
+#
+
+# Start a page, or a part of a page
+pages = {}
+def page_start (value):
+  global error_counter
+  global current_page
+  global pages
+  previous_page = current_page
+  current_page = make_pageno(value)
+  if (current_page <= previous_page):
+    print ("Pages must be described in order: " + value)
+    error_counter = error_counter + 1
+  if (current_page not in pages):
+    pages [current_page] = {}
+  return
+
+def page_end ():
+  return
+
+# Start an act
+def act_start (act_name):
+  this_page = pages [current_page]
+  if ("act" not in this_page):
+    this_page ["act"] = []
+  this_page ["act"].append(act_name)
+  return
+
+def act_end ():
+  return
+
+# Start a scene
+def scene_start (scene_name):
+  this_page = pages [current_page]
+  if ("scene" not in this_page):
+    this_page ["scene"] = []
+  this_page ["scene"].append(scene_name)
+  return
+
+def scene_end ():
+  return
+
+# sing a song on this page, or part of a page
+def song_start (songname):
+  this_page = pages [current_page]
+  if ("songs" not in this_page):
+    this_page ["songs"] = []
+  the_songs = this_page ["songs"]
+  the_songs.append ([songname, 1])
+  return
+
+def song_end ():
+  return
+
+# Make a sound on this page, or part of a page
+def sound_start (soundname):
+  this_page = pages [current_page]
+  if ("sounds" not in this_page):
+    this_page ["sounds"] = []
+  the_sounds = this_page ["sounds"]
+  the_sounds.append ([soundname, 1])
+  return
+
+def sound_end ():
+  return
+
+# This page, or part of a page, lasts this many seconds
+def duration_start (duration_value):
+  this_page = pages [current_page]
+  if ("duration" not in this_page):
+    this_page ["duration"] = []
+  the_duration = this_page ["duration"]
+  the_duration.append (int(duration_value))
+  return
+
+def duration_end ():
+  return
+
+# start a song or sound on this page, or part of a page
+def begin_start (value):
+  if (value[0:5] == "song "):
+    songname = value[5:]
+    this_page = pages [current_page]
+    if ("songs" not in this_page):
+      this_page ["songs"] = []
+    the_songs = this_page ["songs"]
+    the_songs.append ([songname, 2])
+  elif (value[0:6] == "sound "):
+    soundname = value[6:]
+    this_page = pages [current_page]
+    if ("sounds" not in this_page):
+      this_page ["sounds"] = []
+    the_sounds = this_page ["sounds"]
+    the_sounds.append ([soundname, 2])
+  else:
+    print ("Bad begin: " + value)
+    error_counter = error_counter + 1
+  return
+
+def begin_end ():
+  return
+
+# end a previously-started song or sound on this page,
+#  or part of a page
+def end_start (value):
+  if (value[0:5] == "song "):
+    songname = value[5:]
+    this_page = pages [current_page]
+    if ("songs" not in this_page):
+      this_page ["songs"] = []
+    the_songs = this_page ["songs"]
+    the_songs.append ([songname, 0])
+  elif (value == "show"):
+    this_page = pages [current_page]
+    this_page ["end"] = []
+  elif (value[0:6] == "sound "):
+    soundname = value[6:]
+    this_page = pages [current_page]
+    if ("sounds" not in this_page):
+      this_page ["sounds"] = []
+    the_sounds = this_page ["sounds"]
+    the_sounds.append ([soundname, 0])
+  else:
+    print ("Bad end: " + value)
+    error_counter = error_counter + 1
+  return
+
+def end_end ():
+  return
+
+# dictionary character_current_group is indexed by
+# character name and holds the group that each
+# character is in, while he is on stage.
+character_current_group = {}
+
+# a character enters the stage, or is heard off-stage
+# each time a character enters he is in his default group
+# unless specified otherwise
+current_character_record = ""
+def enter_start (value):
+  global current_character_record
+  global character_current_group
+  this_page = pages [current_page]
+  if ("enter" not in this_page):
+    this_page ["enter"] = []
+  the_enter_list = this_page ["enter"]
+  if (value not in characters):
+    the_character = {}
+    the_character ["name"] = value
+    the_character ["group"] = ""
+    characters [value] = the_character
+  the_character = characters [value]
+  group = the_character ["group"]
+  character_record = [the_character, 3, group]
+  current_character_record = character_record
+  the_enter_list.append (character_record)
+  character_current_group [value] = group
+  return
+
+# during this appearance the character may not speak,
+# and if he does he may be in a special group
+def enter_keyword_value (keyword, value):
+  global error_counter
+  global current_character_record
+  global groups
+  the_character = current_character_record [0]
+  character_name = the_character ["name"]
+  if ((keyword == "speaks") and (value == "no")):
+    current_character_record [1] = 0
+    return
+  if (keyword == "group"):
+    current_character_record [2] = value
+    character_current_group [character_name] = value
+    groups.add (value)
+    return
+  print ("Unknown enter clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+
+def enter_end ():
+  current_character_record = ""
+  return
+
+# the character speaks during this page, or part of a page
+def speak_start (character_name):
+  global current_character_record
+  the_character = characters [character_name]
+  group = character_current_group [character_name]
+  character_record = [the_character, -1, group]
+  this_page = pages [current_page]
+  if ("speak" not in this_page):
+    this_page ["speak"] = []
+  the_speaks_list = this_page ["speak"]
+  the_speaks_list.append(character_record)
+  current_character_record = character_record
+  return
+
+# during this page, or part of a page, the character
+# may be in a special group
+def speak_keyword_value (keyword, value):
+  global error_counter
+  global current_character_record
+  global groups
+  if (keyword == "group"):
+    character_record = current_character_record
+    the_character = character_record [0]
+    character_name = the_character ["name"]
+    current_character_record [2] = value
+    character_current_group [character_name] = value
+    groups.add (value)
+    return
+  print ("Unknown speak caluse: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+
+def speak_end ():
+  return
+
+# the character begins speaking on this page, or part of
+# a page, and does not stop until quieted
+def speaking_start (character_name):
+  global current_character_record
+  the_character = characters [character_name]
+  group = character_current_group [character_name]
+  character_record = [the_character, -1, group]
+  this_page = pages [current_page]
+  if ("speaking" not in this_page):
+    this_page ["speaking"] = []
+  the_speaking_list = this_page ["speaking"]
+  the_speaking_list.append(character_record)
+  current_character_record = character_record
+  return
+
+# during this speaking interval the character
+# may be in a special group
+def speaking_keyword_value (keyword, value):
+  global error_counter
+  global current_character_record
+  global groups
+  if (keyword == "group"):
+    character_record = current_character_record
+    the_character = current_character_record [0]
+    character_name = the_character ["name"]
+    current_character_record [2] = value
+    character_current_group [character_name] = value
+    groups.add (value)
+    return
+  print ("Unknown speaking clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+
+def speaking_end ():
+  return
+
+def quiet_start (character_name):
+  the_character= characters [character_name]
+  this_page = pages [current_page]
+  if ("quiet" not in this_page):
+    this_page ["quiet"] = []
+  the_quiet_list = this_page ["quiet"]
+  the_quiet_list.append(the_character)
+  return
+
+def quiet_end ():
+  return
+  
+def exit_start (value):
+  global character_current_group
+  this_page = pages [current_page]
+  if ("exit" not in this_page):
+    this_page ["exit"] = []
+  the_exit_list = this_page ["exit"]
+  the_character = characters [value]
+  the_exit_list.append (the_character)
+  del character_current_group [value]
+  return
+
+def exit_end ():
+  return
+
+def intermission_start (value):
+  this_page = pages [current_page]
+  this_page ["intermission"] = []
+  return
+
+def intermission_end ():
+  return
+
+# Parse the command line.
+arguments = parser.parse_args ()
+arguments = vars(arguments)
+
+if (arguments ['trace'] != None):
+  do_trace = 1
+  trace_file_name = arguments ['trace']
+  tracefile = open (trace_file_name, 'wt')
+
+if (arguments ['verbose'] != None):
+  verbosity_level = arguments ['verbose']
+
+if (arguments ['output_root'] != None):
+  output_root = arguments ['output_root']
+
+if (arguments ['output_directory'] != None):
+  output_directory = arguments ['output_directory']
+
+file_name = arguments ['input_file']
+if (output_directory == ""):
+  output_directory = os.path.dirname(file_name)
+  
+if (output_root == ""):
+  output_root = os.path.basename(file_name)
+
+if (do_trace == 1):
+  tracefile.write ("Starting; output to " + os.path.join (output_directory, output_root) + "\n")
+  
+infile = open (file_name, 'rt')
+
+for line in infile:
+  if (re.match ("^\s*(//.*)?\n$", line)):
+    continue;                   #  ignore blank lines and comments.
+  matcha = re.match (
+    "^\s*\[(?P<code>(\w)+)\s*(?P<value>(.)*)\]\s*(//.*)?\n$", line)
+  if (matcha):
+# This is a bracketed command, with a possible value before the
+# right bracket
+    code = matcha.groupdict() ['code']
+    value = matcha.groupdict() ['value']
+    if (current_code != ""):
+      exec (current_code + "_end")
+    current_code = code
+    try:
+      exec (current_code + "_start (value)")
+    except NameError:
+      print ("Command " + line.strip() + " not recognized.")
+      current_code = ""
+      error_counter = error_counter + 1
+    continue
+  matchc = re.match (
+    "^\s*(?P<keyword>(\w)+)\s*=\s*(?P<value>(.)*)\s*(//.*)?\n$", line)
+  if (matchc):
+# This line has the form keyword = value
+    keyword = matchc.groupdict () ['keyword']
+    value = matchc.groupdict() ['value']
+    try:
+      exec (current_code + "_keyword_value (keyword, value)")
+    except NameError:
+      print ("Command " + line.strip() + " not valid in a " + current_code)
+      error_counter = error_counter + 1
+    continue
+  print ("Unrecognized line: " + line.strip())
+  error_counter = error_counter + 1
+  break
+infile.close()
+#
+# done reading the file, now process the data
+#
+page_list = list(pages)
+page_list.sort()
+
+# Page numbers are stored internally in a sortable format, consisting of
+# a 4-digit number, a separator, a second 4-digit number, another separator
+# and a third 4-digit number.  Format that into something nice to see.
+# Note that if a number is all zeros it has probably been synthesized,
+# so omit it.
+
+def format_pageno (the_pageno):
+  match_digits = re.match (
+    "^(?P<lead_digits>[0-9]+)(?P<sep1>[^0-9]+)(?P<mid_digits>[0-9]+)" +
+    "(?P<sep2>[^0-9]+)(?P<trail_digits>[0-9]+)$", the_pageno)
+  if (match_digits):
+    lead_digits = match_digits.groupdict() ["lead_digits"]
+    sep1 = match_digits.groupdict() ["sep1"]
+    mid_digits = match_digits.groupdict() ["mid_digits"]
+    sep2 = match_digits.groupdict() ["sep2"]
+    trail_digits = match_digits.groupdict() ["trail_digits"]
+    if (do_trace == 1):
+      tracefile.write ("Formatting " + the_pageno + ".\n")
+      tracefile.write ("lead: " + lead_digits + ".\n")
+      tracefile.write ("sep1: " + sep1 + ".\n")
+      tracefile.write ("mid: " + mid_digits + ".\n")
+      tracefile.write ("sep2: " + sep2 + ".\n")
+      tracefile.write ("trail: " + trail_digits + ".\n")
+    if ((mid_digits == "0000") and (sep2 == "-")):
+      if ((trail_digits == "0000") and (sep1 == "-")):
+        if (do_trace == 1):
+          tracefile.write ("Return 1 " + str(int(lead_digits)) + "\n");
+        return str(int(lead_digits))
+      if (trail_digits == "0000"):
+        if (do_trace == 1):
+          tracefile.write ("Return 2 " + str(int(lead_digits)) + sep1 + "\n")
+        return (str(int(lead_digits)) + sep1)
+      if (do_trace == 1):
+            tracefile.write ("Return 3 " + str(int(lead_digits)) + sep1 +
+                             str(int(trail_digits)) + "\n")
+      return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
+    if (do_trace == 1):
+      tracefile.write ("Return 4 " +
+                       str(int(lead_digits)) + sep1 +
+                       str(int(mid_digits)) + sep2 +
+                       str(int(trail_digits)) + "\n")
+    return (str(int(lead_digits)) + sep1 + str(int(mid_digits)) + sep2 +
+            str(int(trail_digits)))
+
+if (do_trace):
+  tracefile.write ("pages:" + "\n")
+  pprint.pprint (page_list, tracefile)
+  for the_page in page_list:
+    tracefile.write ( "Page " + format_pageno (the_page) + "\n")
+    pprint.pprint (pages [the_page], tracefile)
+    tracefile.write (" " + "\n")
+  tracefile.write ( "End of pages dictionary dump." + "\n")
+  tracefile.write ("\n")
+
+# 
+# The activities dictionary describes the timeline for the show,
+# by listing the activities that happen on each page.  The dictionary
+# is indexed by page number, and the elements are a list of
+# dictionaries.  Keys in these sub-dictionaties are "type", which
+# is the type of activity being recorded: "song", "sound", "act" "scene",
+# "actor".  "name" is the name of the song, act, scene or
+# actor.  For song, act and scene the name is a string; for actor
+# it is a reference to the actor's dictionary.  For actors, sounds and songs
+# there is a third key, "duration", which specifies whether or not they
+# continue to the next page: 1 means they do whereas 0 means they
+# don't.
+# type "duration" is the time, in seconds, to perform this page.
+# type "start_time" is the time this page starts, in seconds.
+# for duration and start_time, "value" is the value.
+#
+
+activities = {}
+prev_page = ""
+for page_number in page_list:
+  this_page = pages [page_number]
+# The first page starts empty.
+  if (prev_page == ""):
+    activities [page_number] = []
+  else:
+# Subsequent pages start with the non-expired items from the previous page.
+    new_activities_list = []
+    for old_activity in activities [prev_page]:
+      new_activity = dict (old_activity)
+      append_record = 1
+      if (new_activity ["type"] == "duration"):
+        append_record = 0
+      if ("duration" in new_activity):
+        if (new_activity ["duration"] == 0):
+          append_record = 0
+      if (append_record == 1):
+        new_activities_list.append(new_activity)
+    activities [page_number] = new_activities_list
+# process information specific to this page
+  if ("songs" in this_page):
+    song_list = this_page ["songs"]
+    for song_record in song_list:
+      song_name, code = song_record
+# code 0 means stop, 1 means just this page, 2 means until stopped
+      found_song = 0
+      song_activity = dict (type = "song", name = song_name)
+      for activity in activities [page_number]:
+        if ((activity ["type"] == "song") and
+            (activity ["name"] == song_name)):
+          found_song = 1
+          song_activity = activity
+          break
+      if (found_song == 1):
+        if (song_activity ["duration"] == 1):
+          if (code == 0):
+            song_activity ["duration"] = 0
+          else:
+            print ("Already singing song " + song_name + " at page " +
+                   format_pageno(page_number))
+            error_counter = error_counter + 1
+        else:
+          print ("Strange command for song " + song_name + " at page " +
+                 format_pageno(page_number))
+          error_counter = error_counter + 1
+      else:
+        if (code == 1):
+          song_activity ["duration"] = 0
+        elif (code == 2):
+          song_activity ["duration"] = 1
+        else:
+          print ("Not singing song " + song_name + " at page " +
+                 format_pageno(page_number))
+          error_counter = error_counter + 1
+        activities[page_number].append(song_activity)
+
+  if ("sounds" in this_page):
+    sound_list = this_page ["sounds"]
+    for sound_record in sound_list:
+      sound_name, code = sound_record
+# code 0 means stop, 1 means just this page, 2 means until stopped
+      found_sound = 0
+      sound_activity = dict (type = "sound", name = sound_name)
+      for activity in activities [page_number]:
+        if ((activity ["type"] == "sound") and
+            (activity ["name"] == sound_name)):
+          found_sound = 1
+          sound_activity = activity
+          break
+      if (found_sound == 1):
+        if (sound_activity ["duration"] == 1):
+          if (code == 0):
+            sound_activity ["duration"] = 0
+          else:
+            print ("Already making sound " + sound_name + " at page " +
+                   format_pageno(page_number))
+            error_counter = error_counter + 1
+        else:
+          print ("Strange command for sound " + sound_name + " at page " +
+                 format_pageno(page_number))
+          error_counter = error_counter + 1
+      else:
+        if (code == 1):
+          sound_activity ["duration"] = 0
+        elif (code == 2):
+          sound_activity ["duration"] = 1
+        else:
+          print ("Not making sound " + sound_name + " at page " +
+                 format_pageno(page_number))
+          error_counter = error_counter + 1
+        activities[page_number].append(sound_activity)
+
+  if ("act" in this_page):
+    act_list = this_page ["act"]
+    for act_name in act_list:
+      act_activity = dict (type = "act", name = act_name)
+      found_act = 0
+      for activity in activities [page_number]:
+        if (activity ["type"] == "act"):
+          found_act = 1
+          act_activity = activity
+          break
+      if (found_act == 1):
+        act_activity ["name"] = act_name
+      else:
+        activities[page_number].append(act_activity)
+
+  if ("scene" in this_page):
+    scene_list = this_page ["scene"]
+    for scene_name in scene_list:
+      scene_activity = dict (type = "scene", name = scene_name)
+      found_scene = 0
+      for activity in activities [page_number]:
+        if (activity ["type"] == "scene"):
+          found_scene = 1
+          scene_activity = activity
+          break
+      if (found_scene == 1):
+        scene_activity ["name"] = scene_name
+      else:
+        activities[page_number].append(scene_activity)
+
+  if ("duration" in this_page):
+    duration_list = this_page ["duration"]
+    for duration_value in duration_list:
+      duration_activity = dict (type = "duration", value = duration_value)
+      found_duration = 0
+      for activity in activities [page_number]:
+        if (activity ["type"] == "duration"):
+          found_duration = 1
+          duration_activity = activity
+          break
+      if (found_duration == 1):
+        duration_activity ["value"] = duration_value
+      else:
+        activities [page_number].append(duration_activity)
+    
+  prev_page = page_number
+  
+if (do_trace == 1):
+  tracefile.write ("Activities, before actors:" + "\n")
+  pprint.pprint (activities, tracefile)
+  tracefile.write (" " + "\n")
+
+#
+# The on_stage dictionary is indexed by page.  The value
+# corresponding to a page is a list of sequences.
+# Each sequence consists of an actor who is on-stage,
+# the character he is playing, a flag specifying whether
+# or not the character speaks, and his microphone group.
+# Speaks == 0 means the character does not speak and does not
+#  need a microphone.
+# Speaks == 1 means the character does not speak on this page,
+#  but needs a microphone because he speaks on other pages in
+#  this same entrance.
+# Speaks == 2 means the character is speaking on this page, but
+#  not on the next unless specifically flagged.
+# Speaks == 3 means the character is speaking and will continue
+#  to speak unless specifically flagged as quiet.
+on_stage = {}
+prev_pageno = ""
+for pageno in page_list:
+  if (do_trace == 1):
+    tracefile.write ("Starting page " + pageno + "\n")
+  this_page = pages [pageno]
+# the first page starts empty.  Subsequent pages start with a
+# copy of what remains from the previous page.
+  if (prev_pageno == ""):
+    on_stage [pageno] = []
+  else:
+# Actors noted as having spoken on the previous page revert to
+# non-speaking on this page, unless specifically so noted again.  
+    new_actor_list = []
+    old_actor_list = on_stage [prev_pageno]
+    for old_actor_record in old_actor_list:
+      new_actor_record = [old_actor_record [0],
+                          old_actor_record [1],
+                          old_actor_record [2],
+                          old_actor_record [3]]
+      if (new_actor_record [2] == 2):
+        new_actor_record [2] = 1
+      new_actor_list.append(new_actor_record)
+    on_stage [pageno] = new_actor_list
+  if (do_trace == 1):
+    tracefile.write ("Actors already on stage:\n")
+    pprint.pprint (on_stage[pageno], tracefile)
+# process entrances first
+  if ("enter" in this_page):
+    the_enter_list = this_page ["enter"]
+    if (do_trace == 1):
+      pprint.pprint (the_enter_list, tracefile)
+    for [the_character, speaks, group] in the_enter_list:
+      the_actor = find_actor(the_character ["name"])
+      if (do_trace == 1):
+        tracefile.write ("Actor " + the_actor ["name"] +
+                         " enters as " + the_character["name"] +
+                         "\n")
+      actor_list = on_stage [pageno]
+      actor_list.append ([the_actor, the_character, speaks, group])
+# update the speaking state for actors who are on stage
+  if ("speak" in this_page):
+    the_speak_list = this_page ["speak"]
+    if (do_trace == 1):
+      pprint.pprint (the_speak_list, tracefile)
+    for [the_character, speaks, group] in the_speak_list:
+      character_found = 0
+      for actor_record in on_stage [pageno]:
+        the_actor, other_character, old_speaks, old_group = actor_record
+        if (other_character == the_character):
+          character_found = 1
+          break
+      if (character_found == 0):
+        print ("Character " + the_character ["name"] +
+               " is not on stage to speak at page " +
+               format_pageno(pageno))
+        error_counter = error_counter + 1
+      else:
+        if (actor_record [2] > 0):
+          if (do_trace == 1):
+            tracefile.write ("Actor " + the_actor ["name"] +
+                             " speaks as " + the_character["name"] + "\n")
+          actor_record [2] = 2
+        actor_record [3] = group
+  if ("speaking" in this_page):
+    the_speaking_list = this_page ["speaking"]
+    if (do_trace == 1):
+      pprint.pprint (the_speaking_list, tracefile)
+    for [the_character, speaks, group] in the_speaking_list:
+      character_found = 0
+      if (do_trace == 1):
+        tracefile.write ("Speaking " + the_character["name"] + "\n")
+      for actor_record in on_stage [pageno]:
+        the_actor, other_character, old_speaks, old_group = actor_record
+        if (other_character == the_character):
+          character_found = 1
+          break
+      if (character_found == 0):
+        print ("Character " + the_character ["name"] +
+               " is not on stage to start speaking at page " +
+               format_pageno(pageno))
+        error_counter = error_counter + 1
+      else:
+        if (actor_record [2] > 0):
+          if (do_trace == 1):
+            tracefile.write ("Actor " + the_actor ["name"] +
+                             " starts speaking as " + 
+                             the_character["name"] + "\n")
+          actor_record [2] = 3
+        actor_record [3] = group
+  if ("quiet" in this_page):
+    the_quiet_list = this_page ["quiet"]
+    if (do_trace == 1):
+      tracefile.write ("quiet list:\n")
+      pprint.pprint (the_quiet_list, tracefile)
+    for the_character in the_quiet_list:
+      character_found = 0
+      for actor_record in on_stage [pageno]:
+        the_actor, other_character, old_speaks, old_group = actor_record
+        if (other_character == the_character):
+          character_found = 1
+          break
+      if (character_found == 0):
+        print ("Character " + the_character ["name"] +
+               " is not on stage to stop speaking at page " + 
+               format_pageno(pageno))
+        error_counter = error_counter + 1
+      else:
+        if (do_trace == 1):
+          tracefile.write ("Quieting " + the_character ["name"] + "\n")
+          pprint.pprint (actor_record, tracefile)
+        if (actor_record [2] > 0):
+          if (do_trace == 1):
+            tracefile.write ("Actor " + the_actor ["name"] +
+                             " stops speaking as " + 
+                             the_character["name"] + "\n")
+          actor_record [2] = 1
+# now process exits
+  if ("exit" in this_page):
+    the_exit_list = this_page ["exit"]
+    if (do_trace == 1):
+      pprint.pprint (the_exit_list, tracefile)
+    for the_character in the_exit_list:
+      character_found = 0
+      for actor_record in on_stage [pageno]:
+        the_actor, other_character, speaks, group = actor_record
+        if (other_character == the_character):
+          character_found = 1
+          break
+      if (character_found == 0):
+        print ("Character " + the_character ["name"] +
+               " is not on stage to exit at page " + 
+               format_pageno(pageno))
+        error_counter = error_counter + 1
+      else:
+        if (do_trace == 1):
+          tracefile.write ("Actor " + the_actor ["name"] +
+                           " exits as " +
+                           the_character["name"] + "\n")
+        actor_list = on_stage [pageno]
+        actor_list.remove (actor_record)
+  if ("intermission" in this_page):
+    actor_list = on_stage [pageno]
+    for [the_actor, the_character, speaks, group] in actor_list:
+      print ("Actor " + the_actor ["name"] +
+             " is still on stage as " + 
+             the_character ["name"] +
+             " at intermission.")
+      error_counter = error_counter + 1
+  if ("end" in this_page):
+    actor_list = on_stage [pageno]
+    for [the_actor, the_character, speaks, group] in actor_list:
+      print ("Actor " + the_actor ["name"] +
+             " is still on stage as " + 
+             the_character ["name"] + " at end.")
+      error_counter = error_counter + 1
+  if (do_trace == 1):
+    tracefile.write ("End of page " + pageno + "\n")
+    #pprint.pprint (on_stage, tracefile))
+  prev_pageno = pageno
+#
+# Add the actors to the activities dictionary.
+#
+for page_number in page_list:
+  actor_list = on_stage [page_number]
+  activities_list = activities [page_number]
+  for the_actor, the_character, speaks, group in actor_list:
+    actor_activity = dict (type = "actor", name = the_actor)
+    if (speaks == 0):
+      actor_activity ["speaks"] = " (no microphone)"
+    elif (speaks == 1):
+      actor_activity ["speaks"] = " (silent)"
+    actor_activity ["group"] = group
+    activities_list.append (actor_activity)
+
+if (do_trace == 1):
+  tracefile.write ("Activities, after actors:" + "\n")
+  pprint.pprint (activities, tracefile)
+  tracefile.write (" " + "\n")
+
+#
+# Assign a duration to each page.  Pages are assumed to take 72 seconds
+# unless otherwise marked.  A page divided into sections is presumed to
+# take 72/<number of sections>, rounded up to the nearest second,
+# for each section unless otherwise marked.
+#
+for page_number in page_list:
+  page_activities_list = activities [page_number]
+  numeric_page_number = page_number [0:4]
+  page_count = 0
+  for other_page_number in page_list:
+    numeric_other_page_number = other_page_number [0:4]
+    if (numeric_page_number == numeric_other_page_number):
+      page_count = page_count + 1
+  duration_found = 0
+  for activity in page_activities_list:
+    if (activity ["type"] == "duration"):
+      duration_found = 1
+      break
+  if (duration_found == 0):
+    duration_value = 72 / page_count
+    int_duration_value = round (duration_value)
+    if (int_duration_value < duration_value):
+      int_duration_value = int_duration_value + 1
+    duration_activity = dict (type = "duration")
+    duration_activity ["value"] = int_duration_value
+    page_activities_list.append(duration_activity)
+
+#
+# Compute the start time of each page.
+#
+prev_page_number = ""
+for page_number in page_list:
+  page_activities_list = activities [page_number]
+  numeric_page_number = int(page_number [0:4])
+  if (prev_page_number != ""):
+    prev_page_activities_list = activities [prev_page_number]
+    prev_start_time_found = 0
+    for activity in prev_page_activities_list:
+      if (activity ["type"] == "start_time"):
+        prev_page_start_time = activity ["value"]
+        prev_start_time_found = 1
+        break
+    if (prev_start_time_found == 0):
+      prev_page_start_time = 0
+    prev_duration_found = 0
+    for activity in prev_page_activities_list:
+      if (activity ["type"] == "duration"):
+        prev_page_duration = activity ["value"]
+        prev_page_duration_found = 1
+        break
+    if (prev_page_duration_found == 0):
+      prev_page_duration = 120
+    this_page_start_time = prev_page_start_time + prev_page_duration
+    numeric_prev_page_number = int(prev_page_number [0:4])
+    while ((numeric_prev_page_number + 1) < numeric_page_number):
+      this_page_start_time = this_page_start_time + 120
+      numeric_prev_page_number = numeric_prev_page_number + 1
+  else:
+    this_page_start_time = 0
+  start_time_activity = dict (type = "start_time")
+  start_time_activity ["value"] = this_page_start_time
+  page_activities_list.append (start_time_activity)
+  if (do_trace):
+    tracefile.write ("Page " + page_number + " starts at " + 
+      str(this_page_start_time) + " seconds." + "\n")
+  prev_page_number = page_number
+
+# Print the total time of the performance
+#
+total_time = 0
+if (len(page_list) > 0):
+  last_page = page_list [-1]
+  last_page_activities_list = activities [last_page]
+  for activity in last_page_activities_list:
+    if (activity ["type"] == "start_time"):
+      last_page_start_time = activity ["value"]
+    if (activity ["type"] == "duration"):
+      last_page_duration = activity ["value"]
+  total_time = last_page_start_time + last_page_duration
+  if (verbosity_level > 0):
+    print ("Total time is " + str(round(total_time / 60)) + " minutes.")
+
+
+# To make microphone instructions easier for actors to understand,
+# we will use song names to describe times in the show.  Record
+# the last song before each page and the first song after each
+# page, so we can relate pages to songs.
+# These dictionaties are indexed by page number and contain the
+# name of the song.
+#
+song_before_page = dict ()
+song_after_page = dict ()
+song_during_page = dict ()
+for page_number in page_list:
+  page_activities = activities [page_number]
+  for activity in page_activities:
+    if (activity ["type"] == "song"):
+      song_name = activity ["name"]
+      song_during_page [page_number] = song_name
+last_song = ""
+for page_number in page_list:
+  song_before_page [page_number] = last_song
+  if (page_number in song_during_page):
+    last_song = song_during_page [page_number]
+prev_song = ""
+for page_number in reversed(page_list):
+  if (page_number in song_during_page):
+    prev_song = song_during_page [page_number]
+  song_after_page [page_number] = prev_song
+
+if (do_trace == 1):
+  tracefile.write ("song during page:" + "\n")
+  pprint.pprint (song_during_page, tracefile)
+  tracefile.write ("\n")
+  tracefile.write ("song before page:" + "\n")
+  pprint.pprint (song_before_page, tracefile)
+  tracefile.write ("\n")
+  tracefile.write ("song after page:" + "\n")
+  pprint.pprint (song_after_page, tracefile)
+  tracefile.write ("\n")
+  
+
+def quote_for_tex (text):
+  fixed_text_1 = text.replace ("#", "\\#")
+  fixed_text_2 = fixed_text_1.replace ("&", "\\&")
+  fixed_text_3 = fixed_text_2.replace (". ", ".~")
+  return fixed_text_3
+
+def actor_expanded_name (the_actor):
+  the_name = the_actor ["name"]
+  the_rolls = rolls [the_name]
+  roll_names = ""
+  for the_character in the_rolls:
+    if (len(roll_names) == 0):
+      roll_names = the_character ["name"]
+    else:
+      roll_names = roll_names + " and " + the_character ["name"]
+  return the_name + " as " + roll_names
+
+def seconds_to_hhmmss (value):
+  hours = int(value / 3600)
+  seconds = value - (hours * 3600)
+  minutes = int (seconds / 60)
+  seconds = value - (hours * 3600) - (minutes * 60)
+  return (str(hours).zfill(2) +
+          ":" +
+          str(minutes).zfill(2) +
+          ":" +
+          str(seconds).zfill(2))
+
+if (do_trace == 1):
+  tracefile.write ("Microphone groups:\n")
+  pprint.pprint (groups, tracefile)
+
+# Output a summary of the show's timeline.
+#
+listfile = open (os.path.join(output_directory, output_root) +
+                              ".activities.tex", "wt")
+cue_number = 0 
+for page_number in page_list:
+  cue_number = cue_number + 1
+  act_name = ""
+  scene_name = ""
+  start_time = ""
+  duration = ""
+  activity_list = activities [page_number]
+  for activity_item in activity_list:
+    type = activity_item ["type"]
+    if (type == "act"):
+      act_name = activity_item["name"]
+    elif (type == "scene"):
+      scene_name = activity_item["name"]
+    elif (type == "start_time"):
+      start_time = int(activity_item ["value"])
+    elif (type == "duration"):
+      duration = int(activity_item ["value"])
+  listfile.write ("\\subsection{" + str(cue_number).zfill(3) +
+                  ": Act " + act_name +
+                  " Scene " + scene_name +
+                  " Page ")
+  listfile.write (format_pageno(page_number))
+  listfile.write (" Start time " + seconds_to_hhmmss(start_time))
+  listfile.write (" Duration " + seconds_to_hhmmss(duration))
+  listfile.write ("}\n")
+#
+# Write actor, song and sound information for this cue.
+  first_group = 1
+  for the_group in groups:
+    first_actor = 1
+    for the_actor in actors:
+      for activity_item in activity_list:
+        if (activity_item ["type"] == "actor"):
+#
+# Write actor information for this cue.
+          if ((activity_item ["name"] == the_actor) and
+              (activity_item ["group"] == the_group)):
+            if (first_group == 1):
+              first_group = 0
+              listfile.write ("\n")
+            if (first_actor == 1):
+              first_actor = 0
+              if (the_group == ""):
+                listfile.write ("\\subsubsection{Actors}\n")
+              else:
+                listfile.write ("\\subsubsection{Actors in group " +
+                              the_group + "}\n")
+              listfile.write ("\\begin{enumerate}\n")
+            listfile.write ("\\item " +
+                            quote_for_tex(actor_expanded_name (the_actor)))
+            if ("speaks" in activity_item):
+              listfile.write (activity_item["speaks"])
+            listfile.write ("\n");
+    if (first_actor == 0):
+      listfile.write ("\\end{enumerate}\n")
+  if (first_group == 0):
+    listfile.write ("\n")
+#
+# Write song information for this cue.
+  first_song = 1
+  for activity_item in activity_list:
+    if (activity_item ["type"] == "song"):
+      if (first_song == 1):
+        first_song = 0
+        listfile.write ("\\subsubsection{Songs}\n\\begin{enumerate}\n")
+      listfile.write ("\\item " +
+                      quote_for_tex(activity_item ["name"]) +
+                      "\n")
+  if (first_song == 0):
+    listfile.write ("\\end{enumerate}")
+#
+# Write sound information for this cue.
+  first_sound = 1
+  for activity_item in activity_list:
+    if (activity_item ["type"] == "sound"):
+      if (first_sound == 1):
+        first_sound = 0
+        listfile.write ("\\subsubsection{Sounds}\n\\begin{enumerate}\n")
+      listfile.write ("\\item " +
+                      quote_for_tex(activity_item["name"]) +
+                      "\n")
+  if (first_sound == 0):
+    listfile.write ("\\end{enumerate}")
+  listfile.write ("\n")
+listfile.close()
+  
+if (do_trace == 1):
+  tracefile.write ("Actors:" + "\n")
+  pprint.pprint (actors, tracefile)
+  tracefile.write ("\n")
+  tracefile.write ("On_stage:" + "\n")
+  pprint.pprint (on_stage, tracefile)
+  tracefile.write ("\n")
+
+#
+# Output a CSV file with actors in columns and pages in rows.
+# If the actor has a microphone on that page, output a "*"
+# or the microphone's group; otherwise output a " "
+#
+listfile = open (os.path.join(output_directory, output_root) + ".csv", "wt")
+listfile.write ("page")
+column = 0
+for the_actor in actors:
+  column = column + 1
+  the_actor ["column"] = column
+  listfile.write (', "' + the_actor ["name"] + '"')
+listfile.write ("\n")
+  
+for pageno in page_list:
+  listfile.write ('"' + format_pageno(pageno) + '"')
+  for the_actor in actors:
+    actor_found = 0
+    actor_speaks = 0
+    for [other_actor, the_character, speaks, group] in on_stage [pageno]:
+      if (other_actor == the_actor):
+        if (speaks > 0):
+          actor_speaks = 1
+          break
+    if (actor_speaks == 1):
+      if (group != ""):
+        listfile.write (',"' + group + '"')
+      else:
+        listfile.write (',"*"')
+    else:
+      listfile.write ('," "')
+  listfile.write ("\n")
+listfile.close()
+
+# Go through the timeline, assigning a microphone to each actor
+# who enters, and removing it when he exits.  Create a new
+# microphone when necessary, but re-use old ones whenever
+# possible.  
+#
+
+# The minimum number of microphones required is the maximum
+# number of speaking actors on stage simultaneously.
+# Start with that many microphones available; we will add to
+# that list if necessary.
+
+max_microphone = 0
+max_microphone_pageno = ""
+for pageno in page_list:
+  speaking_actors = set ()
+  microphone_count = 0
+  for [the_actor, the_character, speaks, group] in on_stage [pageno]:
+    if (speaks > 0):
+      speaking_actors.add (the_actor ["name"])
+      microphone_count = len (speaking_actors)
+  if (microphone_count > max_microphone):
+    max_microphone_pageno = pageno
+    max_microphone = microphone_count
+
+if ((verbosity_level > 0) and (max_microphone_pageno != "")):
+  print ("Minimum of " +
+         str(max_microphone) +
+         " microphones required on page " + 
+         format_pageno(max_microphone_pageno))
+
+# Provide a little more than the minimum.
+max_microphone = max_microphone + extra_microphones
+
+# If the number of microphones was specified in the input file, use that number.
+if (microphone_limit != 0):
+  max_microphone = microphone_limit
+
+# microphone_info is a dictionary indexed by microphone number.  It holds
+# the last actor to wear the microphone, and the time it was removed from him.
+microphone_info = {}
+
+microphones = []
+for the_microphone in range (1,max_microphone+1):
+  microphones.append(the_microphone)
+  microphone_info [the_microphone] = dict (number = the_microphone, 
+    last_actor = "", removal_time = 0)
+
+min_microphone_switching_time = total_time
+min_microphone_switching_time_page = ""
+
+# Assign a microphone to an actor.
+# It is best if an actor always wears the same microphone.
+# 
+def assign_microphone (an_actor, current_page):
+  global max_microphone
+  global min_microphone_switching_time
+  global min_microphone_switching_time_page
+  if (do_trace):
+    tracefile.write ("Assign a microphone to " +
+                     an_actor ["name"] + "\n")
+  the_microphone = 0
+  for activity in activities [current_page]:
+    if (activity ["type"] == "start_time"):
+      current_time = activity ["value"]
+      break
+  if (len(microphones) == 0):
+    if (do_trace == 1):
+      tracefile.write ("Allocate another microphone." + "\n")
+    max_microphone = max_microphone + 1
+    microphone_info [max_microphone] = dict (number = max_microphone, 
+      last_actor = "", removal_time = 0)
+    microphones.append(max_microphone)
+  if (do_trace):
+    pprint.pprint (microphones, tracefile)
+# If the actor previously wore a microphone, try to get it back
+# for him provided there has been enough time to switch
+# microphones from its previous wearer
+  if (an_actor ["old_microphone"] in microphones):
+    possible_microphone = an_actor ["old_microphone"]
+    if (possible_microphone not in microphone_info):
+      microphone_info [possible_microphone] = dict (
+        number = possible_microphone, last_actor = "",
+        removal_time = 0)
+    possible_microphone_info = microphone_info [possible_microphone]
+    last_actor = possible_microphone_info ["last_actor"]
+    delta_time = current_time - possible_microphone_info ["removal_time"]
+    if ((delta_time > microphone_switch_time) or
+        ((last_actor == "") or (last_actor == an_actor))):
+      if (do_trace == 1):
+        tracefile.write ("Actor " + the_actor ["name"] +
+                         " gets his old microphone back" + "\n")
+      the_microphone = possible_microphone
+      microphones.remove(the_microphone)
+    else:
+      if (do_trace):
+        last_actor = possible_microphone_info ["last_actor"]
+        tracefile.write ("Actor " + the_actor ["name"] +
+                         " cannot get his old microphone back" +
+                         " because actor " + last_actor ["name"] +
+                         " was wearing it too recently." + "\n")
+  if (the_microphone == 0):
+# Otherwise, look for a microphone not previously worn.
+    if (do_trace):
+      tracefile.write ("Actors: " + str(actors))
+    for other_microphone in microphones:
+      microphone_was_used = 0
+      for other_actor in actors:
+        if ("old_microphone" not in other_actor):
+          pprint.pprint (other_actor)
+        if (other_actor ["old_microphone"] == other_microphone):
+          microphone_was_used = 1
+          break
+      if (microphone_was_used == 0):
+        the_microphone = other_microphone
+        if (do_trace == 1):
+          tracefile.write ("Actor " + the_actor ["name"] +
+                           " gets an unused microphone" + "\n")
+        microphones.remove(the_microphone)
+        break
+  if (the_microphone == 0):
+# Otherwise, take the oldest microphone from an actor who has
+# left the stage for the last time, provided there has been
+# enough time to switch microphones.
+    for other_microphone in microphones:
+      microphone_still_needed = False
+      other_microphone_info = microphone_info [other_microphone]
+      if (do_trace):
+        pprint.pprint (other_microphone_info, tracefile)
+      delta_time = current_time - other_microphone_info ["removal_time"]
+      if (delta_time < microphone_switch_time):
+        continue
+      for other_actor in actors:
+        if ((other_actor ["old_microphone"] == other_microphone) and
+            (other_actor ["reenters"])):
+          microphone_still_needed = True
+          break
+      if (not microphone_still_needed):
+        the_microphone = other_microphone
+        if (do_trace == 1):
+          last_actor = other_microphone_info ["last_actor"]
+          tracefile.write ("Actor " + the_actor ["name"] +
+                           " gets a microphone from " + 
+                           last_actor ["name"] +
+                           " who has left the stage for the last time" + "\n")
+        microphones.remove(the_microphone)
+        break
+  if (the_microphone == 0):
+# Otherwise, look for a microphone on an actor who will be
+# off-stage until intermission, provided, again, that there
+# has been enough time to switch microphones.
+    for other_microphone in microphones:
+      microphone_still_needed = False
+      other_microphone_info = microphone_info [other_microphone]
+      if (do_trace):
+        pprint.pprint (other_microphone_info, tracefile)
+      delta_time = current_time - other_microphone_info ["removal_time"]
+      if (delta_time < microphone_switch_time):
+        continue
+      for other_actor in actors:
+        if ((other_actor ["old_microphone"] == other_microphone) and 
+          (other_actor ["reenters_before_intermission"])):
+          microphone_still_needed = True
+          break
+      if (not microphone_still_needed):
+          the_microphone = other_microphone
+          if (do_trace == 1):
+            last_actor = other_microphone_info ["last_actor"]
+            tracefile.write ("Actor " + the_actor ["name"] +
+                             " gets a microphone from " + 
+                             last_actor ["name"] +
+                             " who has left the stage until intermission" +
+                             "\n")
+          microphones.remove(the_microphone)
+          break
+  if (the_microphone == 0):
+# Otherwise, take the oldest microphone available.
+    the_microphone = microphones.pop(0)
+    if (do_trace == 1):
+      tracefile.write ("Actor " + the_actor ["name"] + 
+                       " gets the oldest microphone available" + "\n")
+  an_actor ["microphone"] = the_microphone
+  the_microphone_info = microphone_info [the_microphone]
+  delta_time = current_time - the_microphone_info ["removal_time"]
+  last_actor = the_microphone_info ["last_actor"]
+  if ((last_actor != "") and (last_actor != an_actor)):
+    if (delta_time < min_microphone_switching_time):
+      min_microphone_switching_time = delta_time
+      min_microphone_switching_time_page = current_page
+  if (do_trace == 1):
+    tracefile.write ("Actor " + an_actor["name"] +
+                     " gets microphone " + 
+                     str(the_microphone) + " on page " +
+                     str(current_page) + "\n")
+  return
+
+# An actor no longer needs a microphone.
+#
+def remove_microphone (an_actor, current_page):
+  the_microphone = an_actor ["microphone"]
+# if this actor is leaving the stage for the last time, his
+# microphone has higher priority to be given to a different
+# actor than if he is returning.  Similarly, the microphone
+# has intermediate priority if the actor will not be
+# re-entering before the next itermission.
+  will_reenter = False
+  will_reenter_before_intermission = False
+  intermission_encountered = False
+  found_reentry = False
+  for pageno in page_list:
+    if (pageno > current_page):
+      if ("intermission" in pages [pageno]):
+        intermission_encountered = True
+      actor_found = 0
+      for [other_actor, the_character, speaks, group] in on_stage [pageno]:
+        if ((other_actor == an_actor) and (speaks > 0)):
+          will_reenter = True
+          will_reenter_before_intermission = not intermission_encountered
+          found_reentry = True
+          break
+      if (found_reentry):
+        break
+  an_actor ["old_microphone"] = an_actor ["microphone"]
+  an_actor ["microphone"] = 0
+  an_actor ["reenters"] = will_reenter
+  an_actor ["reenters_before_intermission"] = will_reenter_before_intermission
+  microphones.append (the_microphone)
+  this_microphone_info = microphone_info [the_microphone]
+  this_microphone_info ["last_actor"] = an_actor
+  for activity in activities [current_page]:
+    if (activity ["type"] == "start_time"):
+      page_start_time = activity ["value"]
+    if (activity ["type"] == "duration"):
+      page_duration = activity ["value"]
+  this_microphone_info ["removal_time"] = page_start_time + page_duration
+  if (do_trace == 1):
+    tracefile.write ("Actor " + an_actor ["name"] +
+                     " loses microphone " + 
+                     str(the_microphone) + " on page " +
+                     str(current_page) + ";\n")
+    if (not will_reenter):
+      tracefile.write (" he will not need a microphone again" + "\n")
+    elif (not will_reenter_before_intermission):
+      tracefile.write (" he will not need a microphone before intermission" +
+                       "\n")
+  return
+
+# microphone_log is a dictionary keyed by microphone number.
+# values are lists of (actor, page, group) for this microphone.
+microphone_log = {}
+
+# microphone_switching_log is a dictionary keyed by page
+# number.  Values are lists of microphones that must
+# be switched on during this page.
+microphone_switching_log = {}
+
+# page_log is a dictionary keyed by page number.
+# values are lists of (actor, microphone, group) for this page.
+page_log = {}
+
+# the actor log is kept by actor, and is a list of
+# [page, microphone, group].
+for the_actor in actors:
+  the_actor ["log"] = []
+  the_actor ["microphone"] = 0
+  the_actor ["group"] = ""
+
+for pageno in page_list:
+  for the_actor in actors:
+    for [other_actor, the_character, speaks, group] in on_stage[pageno]:
+      if ((other_actor == the_actor) and (speaks > 0)):
+        the_actor ["group"] = group
+# actors returning to the stage and speaking need microphones
+        if (the_actor ["microphone"] == 0):
+          if ("old_microphone" in the_actor):
+            assign_microphone (the_actor, pageno)
+        break
+  for the_actor in actors:
+# actors entering the stage for the first time and speaking get microphones
+    for [other_actor, the_character, speaks, group] in on_stage[pageno]:
+      if ((other_actor == the_actor) and (speaks > 0)):
+        the_actor ["group"] = group
+        if (the_actor ["microphone"] == 0):
+          assign_microphone (the_actor, pageno)
+  for the_actor in actors:
+# log microphone usage by microphone, by page and by actor
+    this_microphone = the_actor ["microphone"]
+    if (this_microphone != 0):
+      microphone_record = [the_actor, pageno, the_actor ["group"]]
+      if (this_microphone not in microphone_log):
+        microphone_log [this_microphone] = []
+      microphone_log [this_microphone].append(microphone_record)
+      page_record = [the_actor, this_microphone, the_actor ["group"]]
+      if (pageno not in page_log):
+        page_log [pageno] = []
+      page_log [pageno].append(page_record)
+      actor_log = the_actor ["log"]
+      actor_record = [pageno, this_microphone, the_actor ["group"]]
+      actor_log.append(actor_record)
+# note which microphones must be switched on for this page
+  for [the_actor, the_character, speaks, group] in on_stage[pageno]:
+    if (speaks > 1):
+      the_microphone = the_actor ["microphone"]
+      if (pageno not in microphone_switching_log):
+        microphone_switching_log [pageno] = []
+      microphone_switching_list = microphone_switching_log [pageno]
+      if (the_microphone not in microphone_switching_list):
+        microphone_switching_list.append(the_microphone)
+# actors leaving the stage will no longer need their microphones
+  for the_actor in reversed(actors):
+    if (the_actor ["microphone"] != 0):
+      actor_found = 0
+      for [other_actor, the_character, speaks, group] in on_stage [pageno]:
+        if ((other_actor == the_actor) and (speaks > 0)):
+          actor_found = 1
+          break
+      if (actor_found == 0):
+        remove_microphone (the_actor, pageno)
+
+if (do_trace):
+  tracefile.write ("Microphone_info:" + "\n")
+  pprint.pprint (microphone_info, tracefile)
+  tracefile.write ("\n")
+
+if (verbosity_level > 0):
+  if (min_microphone_switching_time_page != ""):
+    print ("Minimum microphone switching time is " +
+           str(min_microphone_switching_time) +
+           " on page " +
+           format_pageno(min_microphone_switching_time_page) +
+           ".")
+
+if (do_trace):
+  tracefile.write ("Microphone_log before collapse:" + "\n")
+  pprint.pprint (microphone_log, tracefile)
+  tracefile.write ("\n")
+
+# microphone_group is a dictionary indexed by page and
+# microphone number containing the name of the microphone's
+# group at that page.
+#
+microphone_group = {}
+
+for the_microphone in range (1,max_microphone+1):
+  if (the_microphone in microphone_log):
+    for [an_actor, pageno, group] in microphone_log [the_microphone]:
+      microphone_group [(pageno, the_microphone)] = group
+
+if (do_trace):
+  tracefile.write ("Microphone_group:" + "\n")
+  pprint.pprint (microphone_group, tracefile)
+  tracefile.write ("\n")
+
+# Collapse the microphone log into page ranges instead of
+# individual pages.  We will lose the group information
+# but it has been captured in microphone_group above.
+for the_microphone in range (1,max_microphone+1):
+  if (the_microphone not in microphone_log):
+    microphone_log [the_microphone] = []
+  this_microphone_log = microphone_log [the_microphone]
+  new_microphone_log = []
+  first_entry = 1
+  for log_entry in this_microphone_log:
+    this_actor = log_entry [0]
+    this_page = format_pageno (log_entry [1])
+    this_group = log_entry [2]
+    if (first_entry == 1):
+      prev_actor = this_actor
+      prev_page = this_page
+      prev_group = this_group
+    else:
+      if (this_actor == prev_actor):
+        if (prev_page.count("-") != 0):
+          prev_page = prev_page.split("-")[0] + "-" + this_page
+        else:
+          prev_page = prev_page + "-" + this_page
+      else:
+        new_entry = [prev_actor, prev_page]
+        new_microphone_log.append(new_entry)
+        prev_actor = this_actor
+        prev_page = this_page
+        prev_group = this_group
+    first_entry = 0
+  if (first_entry == 0):
+    new_entry = [prev_actor, prev_page, prev_group]
+    new_microphone_log.append(new_entry)
+    microphone_log [the_microphone] = new_microphone_log
+
+if (do_trace):
+  tracefile.write ("Microphone_log after collapse:" + "\n")
+  pprint.pprint (microphone_log, tracefile)
+  tracefile.write ("\n")
+
+def reformat_page_range (ranges):
+  return_value = ""
+  first_range = 1
+  for the_range in ranges:
+    pages = the_range.split("-")
+    if (first_range == 0):
+      return_value = return_value + ", "
+    else:
+      first_range = 0
+    return_value = return_value + pages[0] + " to " + pages[1]
+  return return_value
+
+# Output microphone assignments by microphone number.
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".assignments.tex", "wt")
+for the_microphone in range (1,max_microphone+1):
+  this_microphone_log = microphone_log [the_microphone]
+  if (len(this_microphone_log) == 0):
+    continue
+  listfile.write (str(the_microphone) + "&")
+  listfile.write ("\\begin{itemize}\n\item ")
+  microphone_actor_list = []
+  for this_log_entry in this_microphone_log:
+    the_actor = this_log_entry [0]
+    if (the_actor not in microphone_actor_list):
+      microphone_actor_list.append (the_actor)
+  first_actor = 1
+  for this_actor in actors:
+    actor_pages = []
+    if (this_actor in microphone_actor_list):
+      for this_log_entry in this_microphone_log:
+        if (this_actor == this_log_entry [0]):
+          actor_pages.append(this_log_entry[1])
+      if (first_actor == 0):
+        listfile.write (";\n\\item ")
+      else:
+        first_actor = 0
+      if (do_trace == 1):
+        pprint.pprint (this_actor, tracefile)
+        pprint.pprint (actor_pages, tracefile)
+      listfile.write (quote_for_tex(actor_expanded_name(this_actor)))
+      listfile.write (" on pages " + reformat_page_range(actor_pages))
+  listfile.write (".\end{itemize}\n" + "\\\\\\hline" + "\n")
+listfile.close()
+
+# Output a label for each microphone showing who uses it.
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".microphone_labels.tex", "wt")
+for the_microphone in range (1, max_microphone+1):
+  this_microphone_log = microphone_log [the_microphone]
+  if (len(this_microphone_log) == 0):
+    continue
+  listfile.write ("\\parbox[t]{4.75in}{" + 
+    str(the_microphone) + "\\hfil\\break ")
+  microphone_actor_list = []
+  for this_log_entry in this_microphone_log:
+    the_actor = this_log_entry [0]
+    if (the_actor not in microphone_actor_list):
+      microphone_actor_list.append (the_actor)
+  first_actor = 1
+  for this_actor in actors:
+    if (this_actor in microphone_actor_list):
+      if (first_actor == 0):
+        listfile.write ("\\hfil\\break ")
+      else:
+        first_actor = 0
+      listfile.write (quote_for_tex(this_actor ["name"]))
+  listfile.write ("}\\hfil\\break\\vskip 0.25in" + "\n")
+listfile.close()
+
+# Output a label for each microphone channel controlled by the
+# microphone operator
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".microphone_channels.tex", "wt")
+for the_microphone in range (1, max_microphone+1):
+  this_microphone_log = microphone_log [the_microphone]
+  if (len(this_microphone_log) == 0):
+    continue
+  listfile.write ("\\vskip 0.25in \\vbox to0.75in {\\parbox[t]{1in}{")
+  microphone_actor_list = []
+  for this_log_entry in this_microphone_log:
+    the_actor = this_log_entry [0]
+    if (the_actor not in microphone_actor_list):
+      microphone_actor_list.append (the_actor)
+  first_actor = 1
+  for this_actor in actors:
+    if (this_actor in microphone_actor_list):
+      the_rolls = rolls [this_actor ["name"]]
+      roll_names = ""
+      for the_character in the_rolls:
+        if (len(roll_names) == 0):
+          roll_names = the_character ["name"]
+      listfile.write (quote_for_tex(roll_names))
+      break
+  listfile.write ("\\vfil}}" + "\n")
+listfile.close()
+
+# Convert the page log into a microphone move dictionary keyed by
+# page number and containing [microphone, to actor, from actor,
+# from page].  
+microphone_moves = {}
+
+if (do_trace == 1):
+  tracefile.write ("Page log:" + "\n")
+  pprint.pprint (page_log, tracefile)
+  tracefile.write ("\n")
+
+for the_actor in actors:
+  the_actor ["microphone"] = 0
+  the_actor ["new_microphone"] = 0
+  the_actor ["on_stage"] = 0
+  the_actor ["left_stage"] = 0
+  the_actor ["group"] = ""
+  
+# Previous microphone holder is a dictionary keyed by microphone
+# number which holds the actor previously holding that
+# microphone. 
+previous_microphone_holder = {}
+
+# First microphone holder remembers which actor first wears
+# each microphone, so it can be given to him before the start
+# of the show.
+first_microphone_holder = {}
+
+# Last microphone holder remembers which actor last
+# wears each microphone, so it can be taken from him
+# at the end of the show.
+last_microphone_holder = {}
+
+# Intermission microphone holder remembers which actor
+# wears each microphone after the intermission, so we can start
+# a rehearsal with the intermission.
+intermission_microphone_holder = {}
+
+for the_microphone in range (1,max_microphone+1):
+  previous_microphone_holder [the_microphone] = ""
+  first_microphone_holder [the_microphone] = ""
+  last_microphone_holder [the_microphone] = ""
+  intermission_microphone_holder [the_microphone] = ""
+
+prev_page = 0
+intermission_page = 0
+
+for the_page in page_list:
+  if ("intermission" in pages[the_page]):
+    intermission_page = the_page
+  if (the_page in page_log):
+    this_page_log = page_log [the_page]
+    for the_actor in actors:
+      the_actor ["new_microphone"] = 0
+    for this_log_entry in this_page_log:
+      the_actor, the_microphone, group = this_log_entry 
+      the_actor ["new_microphone"] = the_microphone
+    for the_actor in actors:
+      the_microphone = the_actor ["new_microphone"]
+      if (the_microphone == 0):
+        if (the_actor ["on_stage"] == 1):
+# this actor is leaving the stage.  Record the page in case another actor
+# uses this microphone later.
+          the_actor ["on_stage"] = 0
+          the_actor ["left_stage"] = prev_page
+          old_microphone = the_actor ["microphone"]
+          previous_microphone_holder [old_microphone] = the_actor
+          if (do_trace):
+            tracefile.write ("Microphone_moves: " +
+                             str(the_microphone) + " " + 
+                             the_actor ["name"] + " " +
+                             str(old_microphone) + "\n")
+      else:
+        if (first_microphone_holder[the_microphone] == ""):
+          first_microphone_holder[the_microphone] = the_actor
+        last_microphone_holder[the_microphone] = the_actor
+        if (intermission_page != 0):
+          if (intermission_microphone_holder [the_microphone] == ""):
+            intermission_microphone_holder [the_microphone] = the_actor
+        if (the_actor ["on_stage"] == 0):
+          if (do_trace):
+            tracefile.write ("Microphone_moves: " +
+                             str(the_microphone) + " " + 
+                             the_actor ["name"] + "\n")
+          the_actor ["microphone"] = the_microphone
+          the_actor ["on_stage"] = 1
+          if (previous_microphone_holder [the_microphone] != ""):
+            previous_actor = previous_microphone_holder [the_microphone]
+            if (previous_actor != the_actor):
+              if (do_trace == 1):
+                tracefile.write ("Microphone_moves: " +
+                                 str(the_microphone) + " " + 
+                                 the_actor ["name"] + " " +
+                                 previous_actor ["name"] + "\n")
+              if (the_page not in microphone_moves):
+                microphone_moves [the_page] = []
+              move_record = [the_microphone, the_actor,
+                             previous_actor,
+                             previous_actor ["left_stage"]]
+              microphone_moves [the_page].append(move_record)
+  prev_page = the_page
+
+if (do_trace):
+  tracefile.write ("Microphone moves before moving to intermission:" + "\n")
+  pprint.pprint (microphone_moves, tracefile)
+  tracefile.write ("\n")
+  tracefile.write ("Previous microphone holders:" + "\n")
+  pprint.pprint (previous_microphone_holder, tracefile)
+  tracefile.write ("\n")
+
+# Modify the moves to bring them to an intermission whenever
+# possible.
+changes_made = 1
+while (changes_made == 1):
+  changes_made = 0
+  for the_page in page_list:
+    if ("intermission" in pages[the_page]):
+      continue
+    if (the_page in microphone_moves):
+      for move_record in microphone_moves[the_page]:
+        the_microphone, the_actor, previous_actor, previous_page = move_record
+        intermission_page = ""
+        for a_page in page_list:
+          if ((a_page >= previous_page) and
+              (a_page <= the_page) and
+              ("intermission" in pages[a_page])):
+            intermission_page = a_page
+            break
+        if (intermission_page != ""):
+          if (do_trace):
+            tracefile.write ("Moving " + str(move_record) +
+                             " from page " + the_page + 
+                             " to page " +
+                             intermission_page + "\n")
+          microphone_moves[the_page].remove(move_record)
+          if (intermission_page not in microphone_moves):
+            microphone_moves [intermission_page] = []
+          microphone_moves[intermission_page].append(move_record)
+          changes_made = 1
+    
+if (do_trace):
+  tracefile.write ("microphone moves after moving to intermission:" + "\n")
+  pprint.pprint (microphone_moves, tracefile)
+  tracefile.write ("\n")
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".microphone_moves.tex", "wt")
+for the_page in page_list:
+  if (the_page in microphone_moves):
+    first_actor = 1
+    for this_actor in actors:
+      for move_record in microphone_moves[the_page]:
+        the_microphone, the_actor, previous_actor, previous_page = move_record
+        if (the_actor == this_actor):
+          if (first_actor == 0):
+            listfile.write (";\n\\item ")
+          else:
+            listfile.write (format_pageno(the_page) + "&")
+            intermission_page = 0
+            if ("intermission" in pages[the_page]):
+              listfile.write ("Intermission: ")
+              intermission_page = 1
+            first_actor = 0
+            listfile.write ("\\begin{itemize}\n\item ")
+          listfile.write (quote_for_tex(actor_expanded_name (the_actor)))
+          listfile.write (" gets microphone " + str(the_microphone))
+          listfile.write (" from " +
+                          quote_for_tex(actor_expanded_name (previous_actor)))
+          if (intermission_page == 0):
+            listfile.write (" after page " + format_pageno(previous_page))
+    if (first_actor == 0):
+      listfile.write ("." + "\n" + "\\end{itemize}" + "\\\\\\hline" + "\n")
+
+# Assuming the stage manager will be handling all microphone moves,
+# compile a list of all microphone operations for him.
+# The microphone_transactions dictionary is keyed by page number.
+# Each value is a list: microphone number, 0 or 1 meaning from
+# or to, and the actor.
+microphone_transactions = {}
+
+for the_page in page_list:
+  if (the_page in microphone_moves):
+    for move_record in microphone_moves[the_page]:
+      the_microphone, the_actor, previous_actor, previous_page = move_record
+      microphone_transaction_1 = [the_microphone, 0, previous_actor]
+      if (previous_page not in microphone_transactions):
+        microphone_transactions [previous_page] = []
+      microphone_transactions[previous_page].append(microphone_transaction_1)
+      microphone_transaction_2 = [the_microphone, 1, the_actor]
+      if (the_page not in microphone_transactions):
+        microphone_transactions [the_page] = []
+      microphone_transactions[the_page].append(microphone_transaction_2)
+
+if (do_trace == 1):
+  tracefile.write ("Microphone transactions:" + "\n")
+  pprint.pprint (microphone_transactions, tracefile)
+  tracefile.write ("\n")
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".stage_manager_before_show.tex", "wt")
+for the_microphone in range (1, max_microphone+1):
+  if (first_microphone_holder[the_microphone] != ""):
+    the_actor = first_microphone_holder [the_microphone]
+    listfile.write (str(the_microphone) + "&" +
+                    quote_for_tex(actor_expanded_name (the_actor)) + 
+                    "\\\\\\hline" + "\n")
+listfile.close()
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".stage_manager_during_show.tex", "wt")
+for the_page in page_list:
+  if (the_page in microphone_transactions):
+    transactions_list = microphone_transactions[the_page]
+    transactions_list.sort()
+    transactions_list_length = len(transactions_list)
+    target_line = int((transactions_list_length+1)/2)
+    if (target_line < 1):
+      target_line = 1
+    if (target_line > transactions_list_length):
+      target_line = transaction_list_length
+    line_number = 1
+    for transaction_record in transactions_list:
+      the_microphone, transaction_type, the_actor = transaction_record
+      direction_list = ["from", "to"]
+      if (line_number == target_line):
+        pageno_text = format_pageno(the_page)
+      else:
+        pageno_text = " "
+      if (line_number < transactions_list_length):
+        endofline_text = "\\\\*\\cline{2-4}"
+      else:
+        endofline_text = "\\\\\\hline\\hline"
+      listfile.write (pageno_text + "&" +
+                      str(the_microphone) + "&" +
+                      direction_list[transaction_type] + "&" +
+                      quote_for_tex(actor_expanded_name (the_actor)) +
+                      endofline_text + "\n")
+      line_number = line_number + 1
+listfile.close()
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".stage_manager_after_show.tex", "wt")
+for the_microphone in range (1, max_microphone+1):
+  if (last_microphone_holder[the_microphone] != ""):
+    the_actor = last_microphone_holder [the_microphone]
+    listfile.write (str(the_microphone) + "&" +
+                    quote_for_tex(actor_expanded_name (the_actor)) + 
+                    "\\\\\\hline" + "\n")
+listfile.close()
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".stage_manager_at_intermission.tex", "wt")
+for the_microphone in range (1, max_microphone+1):
+  if (intermission_microphone_holder [the_microphone] != ""):
+    the_actor = intermission_microphone_holder [the_microphone]
+    listfile.write (str(the_microphone) + "&" +
+                    quote_for_tex(actor_expanded_name (the_actor)) +
+                    "\\\\\\hline" + "\n")
+listfile.close()
+
+def format_page_range (low_page, high_page):
+  for this_page in page_list:
+    if ((this_page >= low_page) and
+        (this_page <= high_page) and
+        ("intermission" in pages[this_page])):
+      return ("during intermission (page " + format_pageno(this_page) + ")")
+  if ((low_page in song_before_page) and
+      (high_page in song_after_page)):
+    return ("after " +
+            quote_for_tex (song_before_page [low_page]) +
+            " (page " + format_pageno(low_page) + ")" + 
+            " but before " +
+            quote_for_tex (song_after_page [high_page]) +
+            " (page " + format_pageno(high_page) + ")")
+  return ("between pages " +
+          format_pageno(low_page) +
+          " and " +
+          format_pageno(high_page))
+
+# Assuming the actors will be handling microphone moves during
+# the show, output a list for each actor showing who he gets
+# his microphone from and who he gives it to, and when.
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".actors.tex", "wt")
+for the_actor in actors:
+# Summarize microphone use
+  actor_log = the_actor ["log"]
+  actor_microphone_set = set ()
+  for [pageno, the_microphone, group] in actor_log:
+    if (the_microphone not in actor_microphone_set):
+      actor_microphone_set.add (the_microphone)
+  used_by_other = 0
+  for other_actor in actors:
+    if (other_actor != the_actor):
+      other_actor_log = other_actor ["log"]
+      for [pageno, the_microphone, group] in other_actor_log:
+        if (the_microphone in actor_microphone_set):
+          used_by_other = 1
+          break
+      if (used_by_other == 1):
+        break
+  if (len(actor_microphone_set) == 0):
+    continue
+  listfile.write (
+    "\\vbox {\\setlength{\parindent}{0.25in}\\noindent " + 
+    "\\textbf{" + quote_for_tex(actor_expanded_name(the_actor)) +
+    "}: ")
+  listfile.write ("You will use ")
+  if (len(actor_microphone_set) == 1):
+    listfile.write ("microphone ")
+  else:
+    listfile.write ("microphones ")
+  microphone_count = 1
+  for the_microphone in range (1, max_microphone+1):
+    if (the_microphone in actor_microphone_set):
+      if (microphone_count != 1):
+        if (microphone_count == len(actor_microphone_set)):
+          listfile.write (" and ")
+        else:
+          listfile.write (", ")
+      listfile.write (str(the_microphone))
+      microphone_count = microphone_count + 1
+  if (used_by_other == 0):
+    listfile.write (" throughout the show. \\par")
+  else:
+    listfile.write (".  \\par" + "\n")
+# Go through all the entries in the log
+  entry_number = 1
+  for [this_page, this_microphone, group] in actor_log:
+# Find the immediately previous and next use of this microphone.
+    prev_page = ""
+    prev_actor = ""
+    next_page = ""
+    next_actor = ""
+    for other_actor in actors:
+      other_actor_log = other_actor ["log"]
+      for [other_page, other_microphone, other_group] in other_actor_log:
+        if (other_microphone == this_microphone):
+          if ((prev_page == "") and (other_page < this_page)):
+            prev_page = other_page
+            prev_actor = other_actor
+          if ((prev_page < other_page) and (other_page < this_page)):
+            prev_page = other_page
+            prev_actor = other_actor
+          if ((next_page == "") and (other_page > this_page)):
+            next_page = other_page
+            next_actor = other_actor
+          if ((next_page > other_page) and (other_page > this_page)):
+            next_page = other_page
+            next_actor = other_actor
+#
+# If there is no previous use, this actor gets the microphone at the top of
+# the show.
+    if (prev_page == ""):
+      listfile.write (str(entry_number) +
+                      ". \\parbox[t]{7in}{Get microphone " +
+                      str(this_microphone) + 
+                      " from the stage manager before the show starts.}\\par" +
+                      "\n")
+      entry_number = entry_number + 1
+    else:
+      if (the_actor != prev_actor):
+        listfile.write (str(entry_number) +
+                        ".  \\parbox[t]{7in}{Get microphone " + 
+                        str(this_microphone) +
+                        " from " + 
+                        quote_for_tex(actor_expanded_name(prev_actor)) +
+                        " " +
+                        format_page_range(prev_page, this_page) +
+                        ".}\\par" + "\n")
+        entry_number = entry_number + 1
+# If there is no subsequent use, he keeps it until the end of the show.
+    if (next_page == ""):
+      listfile.write (str(entry_number) +
+                      ".  \\parbox[t]{7in}{Return microphone " +
+                      str(this_microphone) + 
+                      " to the stage manager at the end of the show.}\\par" +
+                      "\n")
+      entry_number = entry_number + 1
+    else:
+      if (the_actor != next_actor):
+        listfile.write (str(entry_number) +
+                        ".  \\parbox[t]{7in}{Give microphone " + 
+                        str(this_microphone) +
+                        " to " + 
+                        quote_for_tex(actor_expanded_name (next_actor)) +
+                        " " +
+                        format_page_range (this_page, next_page) +
+                        ".}\\par" + "\n")
+        entry_number = entry_number + 1
+  listfile.write ("\\vskip 0.25in}\\par " + "\n" + "\n")
+listfile.close()
+
+#
+# Suppress switching off a microphone if it will be switched back
+# on soon.
+#
+prev_microphone_list = []
+for this_page in page_list:
+  this_page_activities_list = activities [this_page]
+  for activity in this_page_activities_list:
+    if (activity["type"] == "start_time"):
+      this_page_start_time = activity ["value"]
+    if (activity["type"] == "duration"):
+      this_page_duration = activity["value"]
+  if (this_page in microphone_switching_log):
+    microphone_list = microphone_switching_log [this_page]
+  else:
+    microphone_list = []
+  for this_microphone in prev_microphone_list:
+    if (this_microphone not in microphone_list):
+      for other_page in page_list:
+        if (other_page <= this_page):
+          continue
+        if (other_page not in microphone_switching_log):
+          continue
+        other_microphone_list = microphone_switching_log [other_page]
+        if (this_microphone not in other_microphone_list):
+          continue
+        other_page_activities_list = activities [other_page]
+        for activity in other_page_activities_list:
+          if (activity ["type"] == "start_time"):
+            other_page_start_time = activity ["value"]
+          if (activity ["type"] == "duration"):
+            other_page_duration = activity ["value"]
+        microphone_off_time = (other_page_start_time - 
+          (this_page_start_time + this_page_duration))
+        if (microphone_off_time < min_microphone_off_time):
+          if (do_trace):
+            tracefile.write (
+              "Do not switch off microphone " +
+              str(this_microphone) + 
+              " on page " + this_page + "\n")
+          microphone_list.append (this_microphone)
+          microphone_switching_log [this_page] = microphone_list
+          break
+  prev_microphone_list = microphone_list
+
+#
+# Output a file showing when each microphone must be switched on
+# and off.  When switching a microphone on, indicate its group,
+# if one was specified.  If a microphone stays on but changes
+# group, indicate this.
+
+max_microphones_in_use_count = 0
+microphone_cue_count = 0
+max_microphones_in_use_page = ""
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".microphone_switching.tex", "wt")
+prev_microphone_list = []
+prev_page = ""
+for this_page in page_list:
+  if (this_page in microphone_switching_log):
+    microphone_list = microphone_switching_log [this_page]
+  else:
+    microphone_list = []
+  microphone_list.sort()
+  turn_on_list = []
+  turn_off_list = []
+  change_group_list = []
+  for this_microphone in prev_microphone_list:
+    if (this_microphone not in microphone_list):
+      turn_off_list.append(this_microphone)
+  for this_microphone in microphone_list:
+    if (this_microphone not in prev_microphone_list):
+      turn_on_list.append(this_microphone)
+    else:
+      if (microphone_group [(this_page, this_microphone)] !=
+          microphone_group [(prev_page, this_microphone)]):
+        change_group_list.append(this_microphone)
+  if ((len(turn_on_list) > 0) or
+      (len(turn_off_list) > 0) or
+      (len(change_group_list) > 0)):
+    microphone_cue_count = microphone_cue_count + 1
+    listfile.write ("\\vskip 0.25in \\vbox {\\parbox[t]{0.5in}{" +
+                    format_pageno(this_page) + "\\hfil}" + 
+                    "\\parbox[t]{2in}{" )
+    if (len(turn_on_list) > 0):
+      listfile.write ("On: " )
+      first_microphone = 1
+      for this_microphone in turn_on_list:
+        if (first_microphone == 0):
+          listfile.write (", ")
+        else:
+           first_microphone = 0
+        listfile.write (str(this_microphone))
+        group = microphone_group [(this_page, this_microphone)]
+        if (group != ""):
+          listfile.write (" (" + group + ")")
+      listfile.write (". ")
+    if (len(turn_off_list) > 0):
+      listfile.write ("Off: " )
+      first_microphone = 1
+      for this_microphone in turn_off_list:
+        if (first_microphone == 0):
+          listfile.write (", ")
+        else:
+           first_microphone = 0
+        listfile.write (str(this_microphone))
+      listfile.write (". ")
+    if (len(change_group_list) > 0):
+      listfile.write ("Change group: ")
+      first_microphone = 1
+      for this_microphone in change_group_list:
+        if (first_microphone == 0):
+          listfile.write (", ")
+        else:
+          first_microphone = 0
+        group = microphone_group [(this_page, this_microphone)]
+        prev_group = microphone_group [(prev_page, this_microphone)]
+        if (group != ""):
+          if (prev_group != ""):
+            listfile.write (str(this_microphone) +
+                            " moves from " +
+                            prev_group +
+                            " to " + group)
+          else:
+            listfile.write (str(this_microphone) +
+                            " moves to " + group)
+        else:
+          listfile.write (str(this_microphone) +
+                          " leaves " + prev_group)
+      listfile.write (". ")
+
+    # If any microphones have been turned off, note which microphones
+    # are still on, so the microphone operator can verify that he has
+    # not missed an "on" or "off" instruction, or correct the error
+    # if he did.
+    if (len(turn_off_list) > 0):
+      if (len(microphone_list) == 0):
+        listfile.write ("(All off.)")
+      else:
+        if (len(microphone_list) == 1):
+          listfile.write ("(Still on: " + str(microphone_list[0]) + ".)")
+        else:
+          listfile.write ("(Still on: ")
+          first_microphone = 1
+          for this_microphone in microphone_list:
+            if (first_microphone == 0):
+              listfile.write (", ")
+            else:
+              first_microphone = 0
+            listfile.write (str(this_microphone))
+          listfile.write (".)")
+    if (max_microphones_in_use_count < len(microphone_list)):
+      max_microphones_in_use_count = len(microphone_list)
+      max_microphones_in_use_page = this_page
+    listfile.write ("}}" + "\n")
+    prev_microphone_list = microphone_list
+    prev_page = this_page
+
+if (len(prev_microphone_list) != 0):
+  microphone_cue_count = microphone_cue_count + 1
+  listfile.write ("\\vbox {\parbox[t]{0.3in}{" +
+                  format_pageno(page_list[-1]) + "\\hfil}" +
+                  "\\parbox[t]{2in}{" + "Off: ")
+  first_microphone = 1
+  for this_microphone in prev_microphone_list:
+    if (first_microphone == 0):
+      listfile.write (", ")
+    else:
+      first_microphone = 0
+    listfile.write (str(this_microphone))
+  listfile.write (". (All off.)" + "}}" + "\n")
+listfile.close()
+
+if ((verbosity_level > 0) and (max_microphones_in_use_page != "")):
+  print ("Maximum of " + str(max_microphones_in_use_count) +
+         " microphones live on page " + 
+         format_pageno(max_microphones_in_use_page) + ".")
+
+if (verbosity_level > 0):
+  print ("There are " + str(microphone_cue_count) + " microphone cues.")
+    
+if (do_trace == 1):
+  tracefile.close()
+
+if (error_counter > 0):
+  print ("Encountered " + str(error_counter) + " errors.")
