@@ -4,7 +4,7 @@
 # allocate_microphones is a program to allocate microphones
 # between actors in a live stage play.
 
-#   Copyright © 2017 by John Sauter
+#   Copyright © 2019 by John Sauter
 #                      <John_Sauter@systemeyescomputerstore.com>
 
 #   This program is free software: you can redistribute it and/or
@@ -39,7 +39,7 @@ parser = argparse.ArgumentParser (
   formatter_class=argparse.RawDescriptionHelpFormatter,
   description='Allocate microphones between actors for a live ' +
   'stage play.',
-  epilog='Copyright © 2017 by John Sauter' + '\n' +
+  epilog='Copyright © 2019 by John Sauter' + '\n' +
     'License GPL3+: GNU GPL version 3 or later; ' + '\n' +
     'see <http://gnu.org/licenses/gpl.html> for the full text' +
     ' of the license.' + '\n' +
@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 2.1 2017-11-04',
+                     version='allocate_microphones 2.2 2019-03-18',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -162,6 +162,10 @@ def character_end ():
 current_actor = ""
 def actor_start (value):
   global current_actor
+  if (value in actors):
+    print ("Actor " + value + " already defined.")
+    error_counter = error_counter + 1
+    return
   the_actor = {}
   the_actor ["name"] = value
   the_actor ["old_microphone"] = 0
@@ -211,6 +215,7 @@ def role_keyword_value (keyword, value):
         actor_missing = 0
         break
     if (actor_missing == 1):
+      print ("Actor " + name + " not listed.")
       the_actor = {}
       the_actor ["name"] = value
       the_actor ["old_microphone"] = 0
@@ -223,6 +228,7 @@ def role_keyword_value (keyword, value):
       rolls [role_actor] = [] 
     the_roll = rolls [role_actor]
     if (value not in characters):
+      print ("Character " + value + " not listed.")
       characters [value] = {}
       the_character = characters [value]
       the_character ["name"] = value
@@ -249,7 +255,8 @@ def find_actor (character_name):
           if (the_actor ["name"] == actor_name):
             return the_actor
   created_actor = created_actor + 1
-  actor_name = "Uncast #" + str(created_actor) 
+  actor_name = "Uncast #" + str(created_actor)
+  print ("Character " + character_name + " has no actor.")
   rolls [actor_name] = []
   the_actor = {}
   the_actor ["name"] = actor_name
@@ -463,8 +470,8 @@ def begin_start (value):
 def begin_end ():
   return
 
-# end a previously-started song or sound on this page,
-#  or part of a page
+# End a previously-started song or sound on this page,
+#  or part of a page.  Also used for end of show.
 def end_start (value):
   if (value[0:5] == "song "):
     songname = value[5:]
@@ -615,6 +622,8 @@ def speaking_keyword_value (keyword, value):
 def speaking_end ():
   return
 
+# The character does not speak for a while, so we can shut off
+# the actor's microphone.
 def quiet_start (character_name):
   the_character= characters [character_name]
   this_page = pages [current_page]
@@ -626,7 +635,8 @@ def quiet_start (character_name):
 
 def quiet_end ():
   return
-  
+
+# The character leaves the stage, or stops speaking off-stage.
 def exit_start (value):
   global character_current_group
   this_page = pages [current_page]
@@ -641,6 +651,7 @@ def exit_start (value):
 def exit_end ():
   return
 
+# The intermission is a good time to switch microphones.
 def intermission_start (value):
   this_page = pages [current_page]
   this_page ["intermission"] = []
@@ -675,7 +686,8 @@ if (output_root == ""):
   output_root = os.path.basename(file_name)
 
 if (do_trace == 1):
-  tracefile.write ("Starting; output to " + os.path.join (output_directory, output_root) + "\n")
+  tracefile.write ("Starting; output to " +
+                   os.path.join (output_directory, output_root) + "\n")
   
 infile = open (file_name, 'rt')
 
