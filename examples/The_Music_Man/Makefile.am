@@ -9,7 +9,7 @@ verify_files.sh : $(srcdir)/verify_files_template.sh music_man_microphones.pdf m
 	if [ ! -d "expected_output" ] ; then mkdir expected_output ; rsync -rv $(srcdir)/expected_output/ expected_output ; touch copied_from_srcdir ; fi
 	chmod +x verify_files.sh
 
-CLEANFILES = music_man_microphones.aux music_man_microphones.log music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux music_man_timeline.log music_man_timeline.pdf music_man_timeline.toc music_man.txt.activities.tex music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex music_man.txt.stage_manager_after_show.tex music_man.txt.stage_manager_at_intermission.tex music_man.txt.stage_manager_before_show.tex music_man.txt.stage_manager_during_show.tex verify_files.sh
+CLEANFILES = music_man_microphones.aux music_man_microphones.log music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux music_man_timeline.log music_man_timeline.pdf music_man_timeline.toc music_man.txt.activities.tex music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex music_man.txt.microphone_switching_annotated.tex music_man.txt.stage_manager_after_show.tex music_man.txt.stage_manager_at_intermission.tex music_man.txt.stage_manager_before_show.tex music_man.txt.stage_manager_during_show.tex verify_files.sh
 
 music_man.txt.activities.tex : music_man.txt
 	if [ ! -r "music_man.txt" ] ; then cp -v $(srcdir)/music_man.txt . ; fi

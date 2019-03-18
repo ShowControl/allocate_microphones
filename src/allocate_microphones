@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 2.2 2019-03-18',
+                     version='allocate_microphones 2.3 2019-03-18',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -1764,6 +1764,24 @@ if (verbosity_level > 0):
            format_pageno(min_microphone_switching_time_page) +
            ".")
 
+#
+# Character_log remembers which characters are speaking on each page,
+# which actor is being the character, and which microphone the actor
+# is using.
+character_log = dict()
+
+for the_microphone in range (1,max_microphone+1):
+  if (the_microphone in microphone_log):
+    for [the_actor, the_page, the_group] in microphone_log [the_microphone]:
+      for [an_actor, the_character, speaks, a_group] in on_stage [the_page]:
+        if ((an_actor == the_actor) and (speaks > 1)):
+          character_log [the_page, the_microphone] = (the_character, the_actor)
+
+if (do_trace):
+  tracefile.write ("Character_log:")
+  pprint.pprint (character_log, tracefile)
+  tracefile.write ("\n")
+  
 if (do_trace):
   tracefile.write ("Microphone_log before collapse:" + "\n")
   pprint.pprint (microphone_log, tracefile)
@@ -2367,14 +2385,27 @@ for this_page in page_list:
 # Output a file showing when each microphone must be switched on
 # and off.  When switching a microphone on, indicate its group,
 # if one was specified.  If a microphone stays on but changes
-# group, indicate this.
+# group, indicate this.  Write the informaton in two files.
+# The first is intended to be pasted into the script so it can be
+# used with a manual sound board, and so is very brief.
+# The annotated version is intended for
+# programming a sequencer and so includes the character name.
+
+# Given a microphone and a page, find the corresponding character's name.
+def find_character (the_microphone, the_page):
+  the_character, the_actor = character_log [the_page, the_microphone]
+  return (quote_for_tex(the_character ["name"]))
 
 max_microphones_in_use_count = 0
 microphone_cue_count = 0
 max_microphones_in_use_page = ""
 
-listfile = open (os.path.join (output_directory, output_root) +
+listfile1 = open (os.path.join (output_directory, output_root) +
                  ".microphone_switching.tex", "wt")
+listfile2 = open (os.path.join (output_directory, output_root) +
+                 ".microphone_switching_annotated.tex", "wt")
+listfile2.write ("\\begin{description}\n")
+
 prev_microphone_list = []
 prev_page = ""
 for this_page in page_list:
@@ -2400,55 +2431,87 @@ for this_page in page_list:
       (len(turn_off_list) > 0) or
       (len(change_group_list) > 0)):
     microphone_cue_count = microphone_cue_count + 1
-    listfile.write ("\\vskip 0.25in \\vbox {\\parbox[t]{0.5in}{" +
+    listfile1.write ("\\vskip 0.25in \\vbox {\\parbox[t]{0.5in}{" +
                     format_pageno(this_page) + "\\hfil}" + 
                     "\\parbox[t]{2in}{" )
+    listfile2.write ("\\item[" + format_pageno(this_page) + "]\n")
     if (len(turn_on_list) > 0):
-      listfile.write ("On: " )
+      listfile1.write ("On: " )
+      listfile2.write ("Switch on ")
       first_microphone = 1
       for this_microphone in turn_on_list:
         if (first_microphone == 0):
-          listfile.write (", ")
+          listfile1.write (", ")
+          listfile2.write (", ")
         else:
            first_microphone = 0
-        listfile.write (str(this_microphone))
+        listfile1.write (str(this_microphone))
+        listfile2.write ("character " +
+                         find_character (this_microphone, this_page) +
+                         " on microphone " + str(this_microphone))
         group = microphone_group [(this_page, this_microphone)]
         if (group != ""):
-          listfile.write (" (" + group + ")")
-      listfile.write (". ")
+          listfile1.write (" (" + group + ")")
+          listfile2.write (" in group " + group)
+      listfile1.write (". ")
+      listfile2.write (". ")
     if (len(turn_off_list) > 0):
-      listfile.write ("Off: " )
+      listfile1.write ("Off: ")
+      listfile2.write ("Switch off ")
       first_microphone = 1
       for this_microphone in turn_off_list:
         if (first_microphone == 0):
-          listfile.write (", ")
+          listfile1.write (", ")
+          listfile2.write (", ")
         else:
            first_microphone = 0
-        listfile.write (str(this_microphone))
-      listfile.write (". ")
+        listfile1.write (str(this_microphone))
+        listfile2.write ("character " +
+                         find_character (this_microphone, prev_page) +
+                         " on microphone " + str(this_microphone))
+      listfile1.write (". ")
+      listfile2.write (". ")
     if (len(change_group_list) > 0):
-      listfile.write ("Change group: ")
+      listfile1.write ("Change group: ")
       first_microphone = 1
       for this_microphone in change_group_list:
         if (first_microphone == 0):
-          listfile.write (", ")
+          listfile1.write (", ")
+          listfile2.write (". ")
         else:
           first_microphone = 0
         group = microphone_group [(this_page, this_microphone)]
         prev_group = microphone_group [(prev_page, this_microphone)]
         if (group != ""):
           if (prev_group != ""):
-            listfile.write (str(this_microphone) +
+            listfile1.write (str(this_microphone) +
                             " moves from " +
                             prev_group +
                             " to " + group)
+            listfile2.write ("Character " +
+                             find_character(this_microphone, this_page) +
+                             " on microphone " +
+                             str(this_microphone) +
+                             " moves from group " +
+                             prev_group +
+                             " to group " + group)
           else:
-            listfile.write (str(this_microphone) +
+            listfile1.write (str(this_microphone) +
                             " moves to " + group)
+            listfile2.write ("Character " +
+                             find_character(this_microphone, this_page) +
+                             " on microphone " +
+                             str(this_microphone) +
+                             " moves to group " + group)
         else:
-          listfile.write (str(this_microphone) +
+          listfile1.write (str(this_microphone) +
                           " leaves " + prev_group)
-      listfile.write (". ")
+          listfile2.write ("Character " +
+                           find_character(this_microphone, this_page) +
+                           " on microphone " +
+                           str(this_microphone) +
+                           " leaves group " + prev_group)
+      listfile1.write (". ")
 
     # If any microphones have been turned off, note which microphones
     # are still on, so the microphone operator can verify that he has
@@ -2456,41 +2519,64 @@ for this_page in page_list:
     # if he did.
     if (len(turn_off_list) > 0):
       if (len(microphone_list) == 0):
-        listfile.write ("(All off.)")
+        listfile1.write ("(All off.)")
+        listfile2.write ("Note that all microphones are now off.")
       else:
         if (len(microphone_list) == 1):
-          listfile.write ("(Still on: " + str(microphone_list[0]) + ".)")
+          listfile1.write ("(Still on: " + str(microphone_list[0]) + ".)")
+          listfile2.write ("Note that character " +
+                           find_character (microphone_list[0], this_page) +
+                           " on microphone " + str(microphone_list[0]) +
+                           " is still on.")
         else:
-          listfile.write ("(Still on: ")
+          listfile1.write ("(Still on: ")
+          listfile2.write ("Note that characters ")
           first_microphone = 1
           for this_microphone in microphone_list:
             if (first_microphone == 0):
-              listfile.write (", ")
+              listfile1.write (", ")
+              listfile2.write (", ")
             else:
               first_microphone = 0
-            listfile.write (str(this_microphone))
-          listfile.write (".)")
+            listfile1.write (str(this_microphone))
+            listfile2.write (find_character(this_microphone, this_page) +
+                             " on microphone "+
+                             str(this_microphone))
+          listfile1.write (".)")
+          listfile2.write (" are still on.")
     if (max_microphones_in_use_count < len(microphone_list)):
       max_microphones_in_use_count = len(microphone_list)
       max_microphones_in_use_page = this_page
-    listfile.write ("}}" + "\n")
+    listfile1.write ("}}" + "\n")
+    listfile2.write ("\n\n")
     prev_microphone_list = microphone_list
     prev_page = this_page
 
 if (len(prev_microphone_list) != 0):
   microphone_cue_count = microphone_cue_count + 1
-  listfile.write ("\\vbox {\parbox[t]{0.3in}{" +
+  listfile1.write ("\\vbox {\parbox[t]{0.3in}{" +
                   format_pageno(page_list[-1]) + "\\hfil}" +
                   "\\parbox[t]{2in}{" + "Off: ")
+  listfile2.write ("Switch off ")
   first_microphone = 1
   for this_microphone in prev_microphone_list:
     if (first_microphone == 0):
-      listfile.write (", ")
+      listfile1.write (", ")
+      listfile2.write (", ")
     else:
       first_microphone = 0
-    listfile.write (str(this_microphone))
-  listfile.write (". (All off.)" + "}}" + "\n")
-listfile.close()
+    listfile1.write (str(this_microphone))
+    listfile2.write ("character " +
+                     find_character(this_microphone, this_page) +
+                     " on microphone " +
+                     str(this_microphone))
+  listfile1.write (". (All off.)" + "}}" + "\n")
+  listfile2.write (". Note that all microphones are off.\n\n")
+  
+listfile1.close()
+
+listfile2.write ("\\end{description}\n")
+listfile2.close()
 
 if ((verbosity_level > 0) and (max_microphones_in_use_page != "")):
   print ("Maximum of " + str(max_microphones_in_use_count) +

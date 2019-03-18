@@ -183,8 +183,15 @@ actors.
 .microphone_switching.tex
 	Lists in page number order when each microphone should be switched
 on and off.  The microphone operator pastes these notes into his script
-so he can control the "mute" button for each microphone.
+so he can control the "mute" button for each microphone, and move microphones
+between groups.
 
+.microphone_switching_annotated.tex
+	Contains the same information as .microphone_switching.tex but
+	in an expanded form, with character names.  If you have a mixer
+	board with a sequencer, this list is intended for the person
+	who programs the sequencer.
+	
 .stage_manager_after_show.tex
 .stage_manager_at_intermission.tex
 .stage_manager_before_show.tex
@@ -314,7 +321,15 @@ cross-check during a production.
 \end{longtable}
 \end{center}
 
-\subsubsection {Shoe Tree Labels}
+\subsection {Sequencer Programming}
+
+Here are the microphone cues, with character names.  If you
+have a sequencer you can use this information to program
+the sequencer.
+
+\input perils.txt.microphone_switching_annotated.tex
+
+\subsection {Shoe Tree Labels}
 
 When not being worn by an actor, the microphones are stored in a shoe tree,
 which is 4 shoes wide by 6 shoes tall.  
@@ -344,7 +359,8 @@ Here is a label for each space:
 
 \subsubsection {Microphone Switching Instructions by Page}
 
-These instructions are intended to be pasted into the script.
+These instructions are intended to be pasted into the script
+for users of manual sound boards.
 
 \input perils.txt.microphone_switching.tex
 
