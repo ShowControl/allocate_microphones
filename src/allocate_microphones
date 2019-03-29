@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 2.3 2019-03-18',
+                     version='allocate_microphones 2.4 2019-03-28',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -276,15 +276,17 @@ def find_actor (character_name):
   return the_actor
 
 # Convert a text string of the form <number>, <number><suffix>,
-# <number><separator><number> or <number><separator><number><separator><number>
-# into a sortable string.  Do this by
-# extending the numbers to four digits, and providing dashes and zeros
-# to convert the first three forms into the last form.
-# The first form is used when there is only one action on a page.
-# The second form is used for page numbers in ordinary plays, to mark
-# positions on a page.  The third and fourth forms are used in plays
-# that consist of just music, to mark positions by page number and
+# <number><separator><number>, <number><separator><number><separator><number>
+# or <number><suffix><separator><number> into a sortable string.  Do this by
+# extending the numbers to four digits, and providing dashes, blanks and zeros
+# to convert to <number>-<string>-<number>.
+# Simple <number> is used when there is only one action on a page.
+# Add a suffix for page numbers in ordinary plays, to mark
+# positions on a page.  Use two or three numbers in plays that consist of
+# all music, to mark positions by page number and
 # measure number, or by page number, song number and measure number.
+# Plays with both text and music can add -<measure number> to
+# <page><position>.
 def make_pageno (value):
   global error_counter
   if (do_trace == 1):
@@ -307,13 +309,20 @@ def make_pageno (value):
       "^(?P<sep>.+?)(?P<trail>[0-9]+)$", suffix)
     if (trailing_digits):
       if (do_trace == 1):
-        tracefile.write ("Has trailing digits.\n")
+        tracefile.write ("Has trailing digits:\n")
+        pprint.pprint (trailing_digits, tracefile)
       trail_digits = trailing_digits.groupdict() ["trail"]
+      if (do_trace == 1):
+        tracefile.write ("Trailing digits are: " + trail_digits + "\n")
       sep = trailing_digits.groupdict() ["sep"]
       while (len(trail_digits) < 4):
         trail_digits = "0" + trail_digits
+      if (do_trace == 1):
+        tracefile.write ("Middle section is " + sep + ".\n")
       middle_digits = re.match (
         "^(?P<sep1>[^0-9]+)(?P<mid>[0-9]+)(?P<sep2>[^[0-9]+)$", sep)
+      if (do_trace == 1):
+        pprint.pprint (middle_digits, tracefile)
       if (middle_digits):
         if (do_trace == 1):
           tracefile.write ("Has middle digits.\n")
@@ -327,6 +336,21 @@ def make_pageno (value):
             "Return 4: " + the_digits + sep1 + mid_digits + sep2 +
             trail_digits + "\n")
         return the_digits + sep1 + mid_digits + sep2 + trail_digits
+      else:
+        if (do_trace == 1):
+          tracefile.write ("Middle section does not have digits.\n")
+        middle_text = re.match (
+          "^(?P<text>[^-]+)-$", sep)
+        if (do_trace == 1):
+          pprint.pprint (middle_text, tracefile)
+          pprint.pprint (middle_text.groupdict(), tracefile)
+        text = middle_text.groupdict() ["text"]
+        while (len(text) < 5):
+          text = text + "0"
+        if (do_trace == 1):
+          tracefile.write (
+            "Return 5: " + the_digits + text + "-" + trail_digits + "\n")
+        return the_digits + text + "-" + trail_digits
       if (do_trace == 1):
         tracefile.write (
           "Return 1: " + the_digits + sep1 + "0000-" + trail_digits + "\n")
@@ -759,18 +783,18 @@ def format_pageno (the_pageno):
     if ((mid_digits == "0000") and (sep2 == "-")):
       if ((trail_digits == "0000") and (sep1 == "-")):
         if (do_trace == 1):
-          tracefile.write ("Return 1 " + str(int(lead_digits)) + "\n");
+          tracefile.write ("Return 1: " + str(int(lead_digits)) + "\n");
         return str(int(lead_digits))
       if (trail_digits == "0000"):
         if (do_trace == 1):
-          tracefile.write ("Return 2 " + str(int(lead_digits)) + sep1 + "\n")
+          tracefile.write ("Return 2: " + str(int(lead_digits)) + sep1 + "\n")
         return (str(int(lead_digits)) + sep1)
       if (do_trace == 1):
-            tracefile.write ("Return 3 " + str(int(lead_digits)) + sep1 +
-                             str(int(trail_digits)) + "\n")
-      return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
+            tracefile.write ("Return 3: " + str(int(lead_digits)) + sep1 +
+                             sep2 + str(int(trail_digits)) + "\n")
+      return (str(int(lead_digits)) + sep1 + sep2 + str(int(trail_digits)))
     if (do_trace == 1):
-      tracefile.write ("Return 4 " +
+      tracefile.write ("Return 4: " +
                        str(int(lead_digits)) + sep1 +
                        str(int(mid_digits)) + sep2 +
                        str(int(trail_digits)) + "\n")
@@ -2512,6 +2536,7 @@ for this_page in page_list:
                            str(this_microphone) +
                            " leaves group " + prev_group)
       listfile1.write (". ")
+      listfile2.write (". ")
 
     # If any microphones have been turned off, note which microphones
     # are still on, so the microphone operator can verify that he has
