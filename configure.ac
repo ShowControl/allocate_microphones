@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([allocate_microphones],[2.4],[John_Sauter@systemeyescomputerstore.com])
+AC_INIT([allocate_microphones],[2.5],[John_Sauter@systemeyescomputerstore.com])
 AM_INIT_AUTOMAKE([tar-pax dist-bzip2 no-dist-gzip]) 
 AC_CONFIG_SRCDIR([src/allocate_microphones])
 AM_MAINTAINER_MODE

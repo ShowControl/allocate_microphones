@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 2.4 2019-03-28',
+                     version='allocate_microphones 2.5 2019-04-01',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -1723,6 +1723,10 @@ for the_actor in actors:
   the_actor ["microphone"] = 0
   the_actor ["group"] = ""
 
+# actors_by_entrance is a list of actors sorted by their first
+# entrance with a microphone.
+actors_by_entrance = []
+
 for pageno in page_list:
   for the_actor in actors:
     for [other_actor, the_character, speaks, group] in on_stage[pageno]:
@@ -1738,6 +1742,8 @@ for pageno in page_list:
     for [other_actor, the_character, speaks, group] in on_stage[pageno]:
       if ((other_actor == the_actor) and (speaks > 0)):
         the_actor ["group"] = group
+        if (the_actor not in actors_by_entrance):
+          actors_by_entrance = actors_by_entrance + [the_actor]
         if (the_actor ["microphone"] == 0):
           assign_microphone (the_actor, pageno)
   for the_actor in actors:
@@ -1778,6 +1784,9 @@ for pageno in page_list:
 if (do_trace):
   tracefile.write ("Microphone_info:" + "\n")
   pprint.pprint (microphone_info, tracefile)
+  tracefile.write ("\n")
+  tracefile.write ("Actors by entrance: " + "\n")
+  pprint.pprint (actors_by_entrance, tracefile)
   tracefile.write ("\n")
 
 if (verbosity_level > 0):
@@ -1879,7 +1888,7 @@ def reformat_page_range (ranges):
     return_value = return_value + pages[0] + " to " + pages[1]
   return return_value
 
-# Output microphone assignments by microphone number.
+# Output microphone assignments by microphone number and actor entrance.
 
 listfile = open (os.path.join (output_directory, output_root) +
                  ".assignments.tex", "wt")
@@ -1895,7 +1904,7 @@ for the_microphone in range (1,max_microphone+1):
     if (the_actor not in microphone_actor_list):
       microphone_actor_list.append (the_actor)
   first_actor = 1
-  for this_actor in actors:
+  for this_actor in actors_by_entrance:
     actor_pages = []
     if (this_actor in microphone_actor_list):
       for this_log_entry in this_microphone_log:
