@@ -107,8 +107,6 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
-depcomp =
-am__maybe_remake_depfiles =
 SOURCES =
 DIST_SOURCES =
 am__can_run_installinfo = \
@@ -408,7 +406,7 @@ top_srcdir = @top_srcdir@
 dist_check_DATA = music_man_microphones.tex music_man_timeline.tex music_man.txt expected_output/music_man.txt.activities.tex expected_output/music_man.txt.actors.tex expected_output/music_man.txt.assignments.tex expected_output/music_man.txt.csv expected_output/music_man.txt.microphone_channels.tex expected_output/music_man.txt.microphone_labels.tex expected_output/music_man.txt.microphone_moves.tex expected_output/music_man.txt.microphone_switching.tex expected_output/music_man.txt.stage_manager_after_show.tex expected_output/music_man.txt.stage_manager_at_intermission.tex expected_output/music_man.txt.stage_manager_before_show.tex expected_output/music_man.txt.stage_manager_during_show.tex
 dist_check_SCRIPTS = verify_files_template.sh
 TESTS = verify_files.sh
-CLEANFILES = music_man_microphones.aux music_man_microphones.log music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux music_man_timeline.log music_man_timeline.pdf music_man_timeline.toc music_man.txt.activities.tex music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex music_man.txt.microphone_switching_annotated.tex music_man.txt.stage_manager_after_show.tex music_man.txt.stage_manager_at_intermission.tex music_man.txt.stage_manager_before_show.tex music_man.txt.stage_manager_during_show.tex verify_files.sh
+CLEANFILES = music_man_microphones.aux music_man_microphones.log music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux music_man_timeline.log music_man_timeline.pdf music_man_timeline.toc music_man.txt.activities.tex music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex music_man.txt.microphone_switching_annotated.tex music_man.txt.stage_manager_after_show.tex music_man.txt.stage_manager_at_intermission.tex music_man.txt.stage_manager_before_show.tex music_man.txt.stage_manager_during_show.tex music_man.txt.X32TC.txt verify_files.sh
 all: all-am
 
 .SUFFIXES:
@@ -422,9 +420,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu --ignore-deps examples/The_Music_Man/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/The_Music_Man/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu --ignore-deps examples/The_Music_Man/Makefile
+	  $(AUTOMAKE) --gnu examples/The_Music_Man/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \

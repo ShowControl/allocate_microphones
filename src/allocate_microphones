@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 2.5 2019-04-01',
+                     version='allocate_microphones 3.0 2019-05-04',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -91,11 +91,18 @@ characters = {}
 # of references to character dictionaries.
 rolls = {}
 
-# groups is the set of group names.  The empty
-# string is the default group and so is always
-# present.
-groups = set ("")
-groups.add ("")
+# groups is the dictionary of group names, indexed by name.
+# The empty string is the default group and so is always
+# present.  Each entry is a dictionary containing only the group number
+# and name.  More information will be added later.
+
+groups = dict()
+group_number = 1
+group_dict = dict()
+group_dict["number"] = group_number
+group_dict["name"] = ""
+group_number = group_number + 1
+groups[""] = group_dict
 
 current_code = ""
 
@@ -107,6 +114,24 @@ show_name = ""
 def show_start(value):
   global show_name
   show_name = value
+  return
+
+venue_name = ""
+designer_name = ""
+def show_keyword_value (keyword, value):
+  global error_counter
+  global venue_name
+  global designer_name
+  if (keyword == "venue"):
+    venue_name = value
+    return
+
+  if (keyword == "designer"):
+    designer_name = value
+    return
+  
+  print ("Unknown show clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
   return
  
 def show_end():
@@ -125,6 +150,40 @@ def microphones_start(value):
   return
 
 def microphones_end():
+  return
+
+# The number of Digitally-controlled amplifiers (DCAs)
+DCA_count_specified = 0
+DCA_count = 8
+def DCA_start(value):
+  global DCA_count_specified
+  global DCA_count
+  global error_counter
+  try:
+    DCA_count = int(value)
+  except ValueError:
+    print ("Number of DCAs must be an integer, not " + value)
+    error_counter = error_counter + 1
+    return
+  DCA_count_specified = 1
+
+DCA_style = "solo"
+def DCA_keyword_value (keyword, value):
+  global error_counter
+  global DCA_style
+  if (keyword == "style"):
+    if (value == "nosolo" or value == "solo"):
+      DCA_style = value
+    else:
+      print ("Unknown DCA style clause; must be solo or nosolo, not " + value)
+      error_counter = error_counter + 1
+      current_character ["group"] = value
+    return
+  print ("Unknown DCA clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+  
+def DCA_end():
   return
 
 # A character in the play
@@ -147,9 +206,15 @@ def character_keyword_value (keyword, value):
   global current_character
   global error_counter
   global groups
+  global group_number
   if (keyword == "group"):
     current_character ["group"] = value
-    groups.add (value)
+    if (value not in groups):
+      group_dict = dict()
+      group_dict["number"] = group_number
+      group_dict["name"] = value
+      group_number = group_number + 1
+      groups[value] = group_dict
     return
   print ("Unknown character clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -233,6 +298,7 @@ def role_keyword_value (keyword, value):
       the_character = characters [value]
       the_character ["name"] = value
       the_character ["group"] = ""
+      error_counter = error_counter + 1
     the_roll.append(characters[value])
     return
   print ("Unknown roll clause: " + keyword + "=" + value)
@@ -268,6 +334,7 @@ def find_actor (character_name):
     characters [character_name] = {}
     the_character = characters [character_name]
     the_character ["name"] = character_name
+    error_counter = error_counter + 1
   the_roll = rolls [actor_name]
   the_roll.append(characters[character_name])
   if (do_trace == 1):
@@ -341,10 +408,13 @@ def make_pageno (value):
           tracefile.write ("Middle section does not have digits.\n")
         middle_text = re.match (
           "^(?P<text>[^-]+)-$", sep)
-        if (do_trace == 1):
-          pprint.pprint (middle_text, tracefile)
-          pprint.pprint (middle_text.groupdict(), tracefile)
-        text = middle_text.groupdict() ["text"]
+        if (middle_text == None):
+          text = "-"
+        else:
+          if (do_trace == 1):
+            pprint.pprint (middle_text, tracefile)
+            pprint.pprint (middle_text.groupdict(), tracefile)
+            text = middle_text.groupdict() ["text"]
         while (len(text) < 5):
           text = text + "0"
         if (do_trace == 1):
@@ -543,6 +613,8 @@ def enter_start (value):
     the_character ["name"] = value
     the_character ["group"] = ""
     characters [value] = the_character
+    print ("Character " + value + " is unknown.")
+    error_counter = error_counter + 1
   the_character = characters [value]
   group = the_character ["group"]
   character_record = [the_character, 3, group]
@@ -557,6 +629,7 @@ def enter_keyword_value (keyword, value):
   global error_counter
   global current_character_record
   global groups
+  global group_number
   the_character = current_character_record [0]
   character_name = the_character ["name"]
   if ((keyword == "speaks") and (value == "no")):
@@ -565,7 +638,12 @@ def enter_keyword_value (keyword, value):
   if (keyword == "group"):
     current_character_record [2] = value
     character_current_group [character_name] = value
-    groups.add (value)
+    if (value not in groups):
+      group_dict = dict()
+      group_dict["number"] = group_number
+      group_dict["name"] = value
+      group_number = group_number + 1
+      groups[value] = group_dict
     return
   print ("Unknown enter clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -595,13 +673,19 @@ def speak_keyword_value (keyword, value):
   global error_counter
   global current_character_record
   global groups
+  global group_number
   if (keyword == "group"):
     character_record = current_character_record
     the_character = character_record [0]
     character_name = the_character ["name"]
     current_character_record [2] = value
     character_current_group [character_name] = value
-    groups.add (value)
+    if (value not in groups):
+      group_dict = dict()
+      group_dict["number"] = group_number
+      group_dict["name"] = value
+      group_number = group_number + 1
+      groups[value] = group_dict
     return
   print ("Unknown speak caluse: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -631,13 +715,19 @@ def speaking_keyword_value (keyword, value):
   global error_counter
   global current_character_record
   global groups
+  global group_number
   if (keyword == "group"):
     character_record = current_character_record
     the_character = current_character_record [0]
     character_name = the_character ["name"]
     current_character_record [2] = value
     character_current_group [character_name] = value
-    groups.add (value)
+    if (value not in groups):
+      group_dict = dict()
+      group_dict["number"] = group_number
+      group_dict["name"] = value
+      group_number = group_number + 1
+      groups[value] = group_dict
     return
   print ("Unknown speaking clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -789,6 +879,11 @@ def format_pageno (the_pageno):
         if (do_trace == 1):
           tracefile.write ("Return 2: " + str(int(lead_digits)) + sep1 + "\n")
         return (str(int(lead_digits)) + sep1)
+      if (sep2 == "-"):
+        if (do_trace == 1):
+          tracefile.write ("Return 6: " + str(int(lead_digits)) + sep1 +
+                           str(int(trail_digits)) + "\n.")
+        return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
       if (do_trace == 1):
             tracefile.write ("Return 3: " + str(int(lead_digits)) + sep1 +
                              sep2 + str(int(trail_digits)) + "\n")
@@ -1298,6 +1393,10 @@ def quote_for_tex (text):
   fixed_text_3 = fixed_text_2.replace (". ", ".~")
   return fixed_text_3
 
+def quote_for_X32TC (text):
+  fixed_text_1 = text.replace ("'", "''")
+  return fixed_text_1
+
 def actor_expanded_name (the_actor):
   the_name = the_actor ["name"]
   the_rolls = rolls [the_name]
@@ -1754,6 +1853,9 @@ for pageno in page_list:
       if (this_microphone not in microphone_log):
         microphone_log [this_microphone] = []
       microphone_log [this_microphone].append(microphone_record)
+      if (do_trace == 1):
+        tracefile.write ("Microphone log entry: " + str(this_microphone) + "\n")
+        pprint.pprint (microphone_record, tracefile)
       page_record = [the_actor, this_microphone, the_actor ["group"]]
       if (pageno not in page_log):
         page_log [pageno] = []
@@ -1799,8 +1901,16 @@ if (verbosity_level > 0):
 
 #
 # Character_log remembers which characters are speaking on each page,
-# which actor is being the character, and which microphone the actor
-# is using.
+# which actor is being the character, which microphone the actor
+# is using, which group he is in and the name of one of the underlying
+# characters.  Note that an actor may be more than one character.
+#
+# Character_log is indexed by page and microphone.  The value is a list
+# with these items:
+# 0 = composite character names
+# 1 = actor
+# 2 = group
+# 3 = list of names of characters
 character_log = dict()
 
 for the_microphone in range (1,max_microphone+1):
@@ -1808,10 +1918,18 @@ for the_microphone in range (1,max_microphone+1):
     for [the_actor, the_page, the_group] in microphone_log [the_microphone]:
       for [an_actor, the_character, speaks, a_group] in on_stage [the_page]:
         if ((an_actor == the_actor) and (speaks > 1)):
-          character_log [the_page, the_microphone] = (the_character, the_actor)
+          old_name = ""
+          old_character_names = list()
+          if (the_page, the_microphone) in character_log:
+            old_name = character_log [the_page, the_microphone][0] + " and "
+            old_character_names = character_log [the_page, the_microphone][3]
+          character_log [the_page, the_microphone] = \
+            (old_name + the_character["name"], the_actor, the_group,
+             old_character_names + [the_character["name"]])
+             
 
 if (do_trace):
-  tracefile.write ("Character_log:")
+  tracefile.write ("Character_log:\n")
   pprint.pprint (character_log, tracefile)
   tracefile.write ("\n")
   
@@ -2043,7 +2161,7 @@ for the_page in page_list:
           old_microphone = the_actor ["microphone"]
           previous_microphone_holder [old_microphone] = the_actor
           if (do_trace):
-            tracefile.write ("Microphone_moves: " +
+            tracefile.write ("Microphone_moves 1: " + the_page + " " +
                              str(the_microphone) + " " + 
                              the_actor ["name"] + " " +
                              str(old_microphone) + "\n")
@@ -2056,7 +2174,7 @@ for the_page in page_list:
             intermission_microphone_holder [the_microphone] = the_actor
         if (the_actor ["on_stage"] == 0):
           if (do_trace):
-            tracefile.write ("Microphone_moves: " +
+            tracefile.write ("Microphone_moves 2: " + the_page + " " +
                              str(the_microphone) + " " + 
                              the_actor ["name"] + "\n")
           the_actor ["microphone"] = the_microphone
@@ -2065,7 +2183,7 @@ for the_page in page_list:
             previous_actor = previous_microphone_holder [the_microphone]
             if (previous_actor != the_actor):
               if (do_trace == 1):
-                tracefile.write ("Microphone_moves: " +
+                tracefile.write ("Microphone_moves 3: " + the_page + " " +
                                  str(the_microphone) + " " + 
                                  the_actor ["name"] + " " +
                                  previous_actor ["name"] + "\n")
@@ -2414,6 +2532,695 @@ for this_page in page_list:
           break
   prev_microphone_list = microphone_list
 
+# Write a file for X32 Theatre Control.  This is a text file which
+# can be converted to an sqlite3 file using sqlite3.  The resulting
+# sqlite3 file can be read by X32 Theatre Control.
+#
+# The sqlite3 database contains the following tables:
+#   config:       columns param and value contain configuration keywords
+#                 and their values.  See below for valid keywords and values.
+#   cues:         The first two columns are number and point, both integers.
+#                 They are combined into a unique integer called cueid.
+#                 The third column is the cue's name.  An apostrophe in the
+#                 cue name is represented as two apostrophes since the text
+#                 field is delimited by apostrophes.
+#                 The next eight columns are dca01Channels through
+#                 dca08Channels.  Each is a list of profile IDs
+#                 to place in the DCA on this cue.
+#                 The next eight columns are dca01Label through dcl08Label.
+#                 These labels are placed on the DCA' scribble strip.
+#                 Null means no label.
+#                 The next three columns are channelPositions, channelProfiles
+#                 and fxMutes.  ChannelPositions is a list of channel number
+#                 = position id.
+#                 Optional columns are channelFX and snippets.
+#                 Snippets is the id of the snippet to invoke on this cue.
+#   positions:    Columns are an integer id, name, shortName, numeric delay
+#                 and numeric pan.  There is one record for each stage
+#                 position, each with a value for delay and pan.
+#                 By default there is one position with id 0 at center stage.
+#                 which is center stage.
+#   profiles:     Columns are an integer id, channel, name, integer default,
+#                 and data.  There is one profile for each (character,
+#                 microphone) combination.  Characters that are on stage at
+#                 the same time and played by a single actor are combined
+#                 into a single profile.
+#                 Data can be blank or an X32 string to set up the X32 channel.
+#   ensembles:    Columns are an integer id, name and channels.  There is a
+#                 record for each group of microphones.  Channels is a list
+#                 of profile IDs.
+#   snippetCache: Columns are integer snippet and name.  There are 100
+#                 snippets numbered 0 through 99.  Unused snippets have
+#                 name NULL.
+#   fxCache:      Columns are integer fx and name.  Records start with
+#                 fx number 1.
+#
+# The config keywords are as follows:
+#   venue:        The name of the theatre
+#   dcas:           A list of the DCAs to be controlled,
+#                   typically '1,2,3,4,5,6,7,8'
+#   channels:       A list of the input channels to be controlled,
+#                   typically all but the backup channels.
+#   buttonMap:      A list of number=number, typically '1=11,0=12'.
+#   consoleModel:   empty string
+#   consoleVersion: empty string
+#   consoleIP:      empty string
+#   consoleMAC:     empty string
+#   autoConnect:    '0'
+#   backupChannels: A list of backup channel=primary channel.
+#   enableChannelMonitoring: '0'
+#   gangLR:         '0'
+#   gangLRChannels:  empty string
+#   gangLRName:      empty string
+#   gangLRcolour:    empty string
+#   designer:        Name of the designer
+#   fxAssigns:       A list of integers.
+#   fxMutes:         empty string
+#   defaultFX:       '1'
+#   snippetRecall:   '1'
+#   fxBusMap:        '1=13,2=14,3=15,4=16'
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".X32TC.txt", "wt")
+listfile.write ("PRAGMA foreign_keys=OFF;\n")
+listfile.write ("BEGIN TRANSACTION;\n")
+listfile.write ("CREATE TABLE 'config' ('param' TEXT, 'value' TEXT, ")
+listfile.write ("PRIMARY KEY(param));\n")
+listfile.write ("INSERT INTO config VALUES ('venue', '" + venue_name + "');\n")
+listfile.write ("INSERT INTO config VALUES ('dcas', '1,2,3,4,5,6,7,8');\n")
+listfile.write ("INSERT INTO config VALUES ('channels', '")
+first_microphone=1
+for the_microphone in range (1,max_microphone+1):
+  this_microphone_log = microphone_log [the_microphone]
+  if (len(this_microphone_log) == 0):
+    continue
+  if (first_microphone == 0):
+    listfile.write (",")
+  listfile.write (str(the_microphone))
+  first_microphone=0
+listfile.write ("');\n")
+listfile.write ("INSERT INTO config VALUES ('buttonMap', '1=11,0=12');\n")
+listfile.write ("INSERT INTO config VALUES ('consoleModel', '');\n")
+listfile.write ("INSERT INTO config VALUES ('consoleVersion', '');\n")
+listfile.write ("INSERT INTO config VALUES ('consoleIP', '');\n")
+listfile.write ("INSERT INTO config VALUES ('consoleMAC', '');\n")
+listfile.write ("INSERT INTO config VALUES ('autoConnect', '0');\n")
+listfile.write ("INSERT INTO config VALUES ('backupChannels', '');\n")
+listfile.write ("INSERT INTO config VALUES ('enableChannelMonitoring', '');\n")
+listfile.write ("INSERT INTO config VALUES ('gangLR', '0');\n")
+listfile.write ("INSERT INTO config VALUES ('gangLRChannels', '0');\n")
+listfile.write ("INSERT INTO config VALUES ('gangLRName', '');\n")
+listfile.write ("INSERT INTO config VALUES ('gangLRColour', '');\n")
+listfile.write ("INSERT INTO config VALUES ('designer', '" +
+                designer_name + "');\n")
+listfile.write ("INSERT INTO config VALUES ('fxAssigns', '0');\n")
+listfile.write ("INSERT INTO config VALUES ('fxMutes', '');\n")
+listfile.write ("INSERT INTO config VALUES ('defaultFX', '');\n")
+listfile.write ("INSERT INTO config VALUES ('snippetRecall', '');\n")
+listfile.write ("INSERT INTO config VALUES ('fxBusMap', '');\n")
+
+listfile.write ("CREATE TABLE 'cues' (" +
+                "'number' INTEGER NOT NULL DEFAULT 999, " +
+                "'point' INTEGER NOT NULL DEFAULT 0, " +
+                "'name' TEXT, " +
+                "'dca01Channels' TEXT, 'dca02Channels' TEXT, " +
+                "'dca03Channels' TEXT, 'dca04Channels' TEXT, " +
+                "'dca05Channels' TEXT, 'dca06Channels' TEXT, " +
+                "'dca07Channels' TEXT, 'dca08Channels' TEXT, " +
+                "'dca01Label' TEXT, 'dca02Label' TEXT, " +
+                "'dca03Label' TEXT, 'dca04Label' TEXT, " +
+                "'dca05Label' TEXT, 'dca06Label' TEXT, " +
+                "'dca07Label' TEXT, 'dca08Label' TEXT, " +
+                "'ChannelPositions' TEXT, " +
+                "'ChannelProfiles' TEXT, " +
+                "'fxMutes' TEXT, " +
+                "'channelFX' TEXT, " +
+                "'snippets' TEXT);\n")
+
+# Profile_list is a list of profiles
+profile_list = list()
+
+# Each profile is a dictionary with elements name, microphone,
+# group and and based_on.  Based_on is a list of lists.  Each list contains
+# a character name, a page, the microphone number and the group name.
+# The character name may be a composite if an actor plays more than
+# one character at a time.
+#
+# We build up the profile_list in stages.  First, create a profile for
+# each character or composite character in the character log.
+#
+
+# Augment the profiles from the character log.
+profile_list_additional = list()
+
+if (do_trace == 1):
+  tracefile.write ("Character_log (length " + str(len(character_log)) + "):\n")
+  pprint.pprint (character_log, tracefile)
+  
+for the_page, the_microphone in character_log:
+  character_record = character_log [the_page, the_microphone]
+  profile_name = character_record[0]
+  the_group = character_record[2]
+  character_list = character_record[3]
+  profile_found = 0
+  for profile in profile_list:
+    if (profile["name"] == profile_name):
+      profile_found = 1;
+      break
+  if (profile_found == 0):
+    profile = dict()
+    profile["name"] = profile_name
+    profile["group"] = the_group
+    profile["microphone"] = the_microphone
+    profile["based_on"] = [[profile_name, the_page, the_microphone,
+                            the_group, character_list]]
+    profile_list.append(profile)
+    continue
+  
+  if (profile["microphone"] == the_microphone):
+    # This is a continuation of a character's presence on stage
+    profile["based_on"] = profile["based_on"] + [[profile_name,
+                                                  the_page,
+                                                  the_microphone,
+                                                  the_group,
+                                                  character_list]]
+    continue
+  # The character is using a different microphone
+  # We need a different profile.
+  need_new_profile = 1
+  for profile_additional in profile_list_additional:
+    if ((profile_additional["name"] == profile["name"]) and
+        (profile_additional["microphone"] == the_microphone)):
+      # We already have the additional profile.
+      profile_additional["based_on"] = profile_additional["based_on"] \
+        + [[profile_name, the_page, the_microphone,
+            the_group, character_list]]
+      need_new_profile = 0
+      break
+  if (need_new_profile == 1):
+    profile_additional = dict()
+    profile_additional["name"] = profile_name
+    profile_additional["microphone"] = the_microphone
+    profile_additional["group"] = the_group
+    profile_additional["based_on"] = [[profile_name, the_page,
+                                       the_microphone,
+                                       the_group,
+                                       character_list]]
+    profile_list_additional.append(profile_additional)
+
+if (do_trace == 1):
+  tracefile.write ("Profile_list 1 (length " + str(len(profile_list)) + "):\n")
+  pprint.pprint (profile_list, tracefile)
+  tracefile.write ("Profile_list_additonal:\n")
+  pprint.pprint (profile_list_additional, tracefile)
+        
+# Give the additional profiles unique names so we can merge them into the
+# profile list.
+
+for profile in profile_list_additional:
+  based_on_list = profile["based_on"]
+  first_based_on = based_on_list[0]
+  the_page = first_based_on[1]
+  profile["name"] = profile["name"] + " page " + format_pageno(the_page)
+
+profile_list = profile_list + profile_list_additional
+
+if (do_trace == 1):
+  tracefile.write ("Profile_list 2 (length " + str(len(profile_list)) + "):\n")
+  pprint.pprint (profile_list, tracefile)
+
+# Now shrink the list by combining profiles that differ only in the
+# pages they are on and the group they are in.
+
+done = 0
+while (done == 0):
+  deleted = 0
+  profile_length = len(profile_list)
+  for id1 in range (0,profile_length-1):
+    for id2 in range (id1+1,profile_length):
+      if (do_trace == 1):
+        tracefile.write ("processing profiles " +
+                         str(id1) + " and " + str(id2) +
+                         " of " + str(profile_length) + ".\n")
+      profile_1 = profile_list [id1]
+      profile_2 = profile_list [id2]
+      if ((profile_1["name"] == profile_2["name"]) and
+          (profile_1["microphone"] == profile_2["microphone"])):
+        profile_1["based_on"] = profile_1["based_on"] + profile_2["based_on"]
+        if (do_trace == 1):
+          tracefile.write ("deleting profile " + str(id2) + ".\n")
+          pprint.pprint (profile_list[id2], tracefile)
+        del profile_list[id2]
+        deleted = 1
+        break
+    if (deleted == 1):
+      break
+  if (deleted == 0):
+    done = 1
+
+if (do_trace == 1):
+  tracefile.write ("Profile_list 3 (length " + str(len(profile_list)) + "):\n")
+  pprint.pprint (profile_list, tracefile)
+  
+# Order profiles by the declaration of their underlying character(s).
+new_profile_list = list()
+for character_name in characters:
+  if (do_trace == 1):
+    tracefile.write ("Sorting character " + character_name + ".\n")
+  for profile in profile_list:
+    if (profile not in new_profile_list):
+      based_on_list = profile["based_on"]
+      first_based_on = based_on_list[0]
+      the_profile_name, the_page, the_microphone, the_group, character_list = \
+        first_based_on
+      the_character_name = character_list[0]
+      if (do_trace == 1):
+        tracefile.write ("Sorting profile " + profile["name"] +
+                         " for character " + character_name +
+                         " based on " + the_character_name + ".\n")
+        pprint.pprint (based_on_list, tracefile)
+      if (the_character_name == character_name):
+        new_profile_list.append(profile)
+profile_list = new_profile_list
+
+if (do_trace == 1):
+  tracefile.write ("Profile_list 4 (length " + str(len(profile_list)) + "):\n")
+  pprint.pprint (profile_list, tracefile)
+
+# Give each profile an ID
+for ID, profile in enumerate(profile_list):
+  profile["ID"] = ID+1
+  
+if (do_trace == 1):
+  tracefile.write ("profile_list 5:\n")
+  pprint.pprint (profile_list, tracefile)
+
+# The channel numbers in the cues are actually profile IDs.
+# Create a mapping between microphone numbers and page to
+# profile IDs.
+find_profile = dict()
+
+for profile in profile_list:
+  based_on_list = profile["based_on"]
+  if (do_trace == 1):
+    tracefile.write ("Based on list: ")
+    pprint.pprint (based_on_list, tracefile)
+  for based_on in based_on_list:
+    if (do_trace == 1):
+      tracefile.write ("Based on: ")
+      pprint.pprint (based_on, tracefile)
+    character_name = based_on[0]
+    the_page = based_on[1]
+    the_microphone = based_on[2]
+    group_name = based_on[3]
+    find_profile[the_page, the_microphone] = (profile["ID"], group_name)
+
+if (do_trace == 1):
+  tracefile.write ("Find_profile:\n")
+  pprint.pprint (find_profile, tracefile)
+
+if (do_trace == 1):
+  tracefile.write ("Groups 1:\n")
+  pprint.pprint (groups, tracefile)
+  
+# In nosolo style, we also have a group for each profile.
+if (DCA_style == "nosolo"):
+  for profile in profile_list:
+    profile_name = profile["name"]
+    matching_group_found = 0
+    for group_name in groups:
+      if (group_name == profile_name):
+        matching_group_found = 1
+    if (matching_group_found == 0):
+      group_dict = dict()
+      group_dict["number"] = group_number
+      group_dict["name"] = profile_name
+      group_number = group_number + 1
+      groups[profile_name] = group_dict
+      if (do_trace == 1):
+        tracefile.write ("Adding group " + profile_name + ".\n")
+
+if (do_trace == 1):
+  tracefile.write ("Groups 2:\n")
+  pprint.pprint (groups, tracefile)
+  
+# Groups is a dictionary indexed by group name.
+# Augment each group by noting which profiles
+# are speaking on each page, within that group.
+for this_page in page_list:
+  for the_microphone in range(1,max_microphone+1):
+    if (this_page, the_microphone) in find_profile:
+      profile_ID, group_name = find_profile[this_page, the_microphone]
+      if (group_name == "" and DCA_style == "nosolo"):
+        for the_profile in profile_list:
+          if (the_profile["ID"] == profile_ID):
+            group_name = the_profile["name"]
+      group_dict = groups[group_name]
+      group_dict["name"] = group_name
+      the_profiles = list()
+      if ("pages" not in group_dict):
+        group_dict["pages"] = dict()
+      group_page = group_dict["pages"]
+      if (this_page in group_page):
+        the_profiles = group_page[this_page]
+      if (profile_ID not in the_profiles):
+        group_page[this_page] = the_profiles + [profile_ID]
+
+if (do_trace == 1):
+  tracefile.write ("Groups 3:\n")
+  pprint.pprint (groups, tracefile)
+
+# DCAs is a dictionary indexed by DCA number.  Each entry is a
+# DCA, which is a dictionary indexed by page number.  Each such entry
+# is a dictionary with entries for the name of the DCA on that page
+# and the list of profiles to include in that DCA.
+
+DCAs = dict()
+if (DCA_count_specified == 0):
+  DCA_count = 8
+  
+for DCA_number in range (0,DCA_count):
+  this_DCA = dict()
+  this_DCA["number"] = DCA_number
+  this_DCA["pages"] = dict()
+  DCAs[DCA_number] = this_DCA
+
+if (do_trace == 1):
+  tracefile.write ("DCAs 1:\n")
+  pprint.pprint (DCAs, tracefile)  
+
+# Find a good DCA for this group on this page.
+def find_good_DCA (this_group, this_page):
+  if (do_trace == 1):
+    tracefile.write ("Finding a good DCA for group " + this_group["name"] +
+                     ":\n")
+    pprint.pprint (this_group, tracefile)
+    tracefile.write ("and page:\n")
+    pprint.pprint (this_page, tracefile)
+  old_DCA_number = -1
+  if ("old_DCA_number" in this_group):
+    old_DCA_number = this_group["old_DCA_number"]
+    this_DCA = DCAs[old_DCA_number]
+    DCA_pages = this_DCA["pages"]
+    if (this_page not in DCA_pages):
+      # The previously-used DCA has this page empty.  Use it.
+      return (this_DCA)
+  best_DCA_size = -1
+  DCA_found = 0
+  for DCA_number in DCAs:
+    this_DCA = DCAs[DCA_number]
+    if (DCA_style == "solo" and DCA_number == 0):
+      if (this_group["name"] == ""):
+        # Use the solo DCA.
+        return (this_DCA)
+      else:
+        continue
+    DCA_pages = this_DCA["pages"]
+    DCA_size = len(this_DCA["pages"])
+    if (DCA_number == old_DCA_number):
+      DCA_size = DCA_size / 2
+    if (this_page not in DCA_pages):
+      if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
+        best_DCA_size = DCA_size
+        best_DCA = this_DCA
+        DCA_found = 1
+  if (DCA_found == 1):
+    return (best_DCA)
+  # No DCA was found with an empty slot.  We must share.
+  best_DCA_size = -1
+  for DCA_number in DCAs:
+    this_DCA = DCAs[DCA_number]
+    DCA_pages = this_DCA["pages"]
+    DCA_size = len(this_DCA["pages"])
+    DCA_found = 0
+    if (DCA_number == old_DCA_number):
+      DCA_size = DCA_size / 2
+    if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
+      best_DCA_size = DCA_size
+      best_DCA = this_DCA
+      DCA_found = 1
+  if (DCA_found == 1):
+    return (best_DCA)
+  if (do_trace == 1):
+    tracefile.write ("No good DCA found.\n")
+  return None
+
+# Assign groups to DCAs.  The groups are processed in the order
+# they were encountered.  In nosolo mode, this processes the characters
+# after the groups, in the order they were listed.
+group_list = dict()
+for group_name in groups:
+  group_dict = groups[group_name]
+  group_number = group_dict["number"]
+  group_list[group_number] = group_dict
+
+if (do_trace == 1):
+  tracefile.write ("Group list:\n")
+  pprint.pprint (group_list, tracefile)
+  
+for group_number in group_list:
+  this_group = group_list[group_number]
+  group_name = this_group["name"]
+  for this_page in page_list:
+    if ("pages" not in this_group):
+      continue
+    group_page = this_group["pages"]
+    if (this_page in group_page):
+      the_profiles = group_page[this_page]
+      this_DCA = find_good_DCA (this_group, this_page)
+      if (do_trace == 1):
+        tracefile.write ("found DCA:\n")
+        pprint.pprint (this_DCA, tracefile)
+      this_group["old_DCA_number"] = this_DCA["number"]
+      DCA_pages = this_DCA ["pages"]
+      if (this_page not in DCA_pages):
+        the_DCA_page = dict()
+        the_DCA_page["profiles"] = list()
+        the_DCA_page["names"] = list()
+        DCA_pages[this_page] = the_DCA_page
+      else:
+        the_DCA_page = DCA_pages[this_page]
+        if ("profiles" not in the_DCA_page):
+          the_DCA_page["profiles"] = list()
+        if ("names" not in the_DCA_page):
+          the_DCA_page["names"] = list()
+      the_DCA_page["profiles"] = the_DCA_page["profiles"] + the_profiles
+      the_names = the_DCA_page["names"]
+      if (group_name not in the_names):
+        the_DCA_page["names"] = the_names + [group_name]
+
+if (do_trace == 1):
+  tracefile.write ("DCAs 2:\n")
+  pprint.pprint (DCAs, tracefile)  
+
+if (do_trace == 1):
+  tracefile.write ("Naming DCAs.\n")
+
+# Give good names to the DCAs
+def give_DCA_name (DCA_number, the_page):  
+  this_DCA = DCAs[DCA_number]
+  if (do_trace == 1):
+    tracefile.write ("Naming this_DCA:\n")
+    pprint.pprint (this_DCA, tracefile)
+  if ("pages" in this_DCA):
+    DCA_pages = this_DCA["pages"]
+    if the_page in DCA_pages:
+      DCA_page = DCA_pages[the_page]
+      if (do_trace == 1):
+        tracefile.write ("DCA_page:\n")
+        pprint.pprint (DCA_page, tracefile)
+      if (DCA_style == "solo" and DCA_number == 0):
+        DCA_page["name"] = "Solo"
+        return
+      if ("names" in DCA_page):
+        the_names = DCA_page["names"]
+        # If there is just one group in this DCA, use its name.
+        if (len(the_names) == 1):
+          DCA_page["name"] = the_names[0]
+          if (do_trace == 1):
+            tracefile.write ("DCA " + str(DCA_number) +
+                             " named " + DCA_page["name"] +
+                             " on page " + the_page + " (1).\n")
+          return
+        # If there is more than one group, call it "..."
+        DCA_page["name"] = "..."
+        if (do_trace == 1):
+          tracefile.write ("DCA " + str(DCA_number) +
+                           "named " + DCA_page["name"] +
+                           " on page " + the_page + "(2).\n")
+        return
+      # No group names for this DCA.  If there is just one profile,
+      # use its name.
+      if ("profiles" in DCA_page):
+        the_profiles = DCA_page["profiles"]
+        if (do_trace == 1):
+          tracefile.write ("the_profiles:\n")
+          pprint.pprint (the_profiles, tracefile)
+        if (len(the_profiles) == 1):
+          profile_ID = the_profiles[0]
+          for the_profile in profile_list:
+            if (the_profile["ID"] == profile_ID):
+              DCA_page["name"] = the_profile["name"]
+              if (do_trace == 1):
+                tracefile.write ("DCA " + str(DCA_number) +
+                                 " named " + DCA_page["name"] +
+                                 " on page " + the_page + " (3).\n")
+              return
+        # More than one profile: call the DCA "..."
+        DCA_page["name"] = "..."
+        if (do_trace == 1):
+          tracefile.write ("DCA " + str(DCA_number) +
+                           " named " + DCA_page["name"] +
+                           " on page " + the_page + " (4).\n")
+        return
+      # No group name and no profiles means a blank name.
+      DCA_page["name"] = ""
+      if (do_trace == 1):
+        tracefile.write ("DCA " + str(DCA_number) +
+                         " named " + DCA_page["name"] +
+                         " on page " + the_page + " (5).\n")
+
+for the_page in page_list:
+  for DCA_number in DCAs:
+    give_DCA_name (DCA_number, the_page)
+  
+if (do_trace == 1):
+  tracefile.write ("DCAs 3:\n")
+  pprint.pprint (DCAs, tracefile)  
+
+# Tell X32 Theatre Control which profiles to unmute in each page,
+# and which DCA they are in.
+
+# DCA_info records information about how the DCAs are used on this page.
+# It is a dictionary indexed by DCA number, with entries
+# for number, profiles and name.
+cue_number = 1;
+for this_page in page_list:
+  listfile.write ("INSERT INTO cues VALUES (" + str(cue_number) + ",0, " +
+                  "'" + format_pageno (this_page) + "', ")
+  DCA_info = dict()
+  for DCA_number in DCAs:
+    this_DCA = DCAs[DCA_number]
+    if (do_trace == 1):
+      tracefile.write ("this_DCA for DCA " + str(DCA_number) + ":\n")
+      pprint.pprint (this_DCA, tracefile)
+    this_DCA_info = dict()
+    this_DCA_info["number"] = DCA_number
+    DCA_info[DCA_number] = this_DCA_info
+    
+    DCA_pages = this_DCA["pages"]
+    DCA_page_found = 0
+    for the_page in DCA_pages:
+      if (the_page == this_page):
+        DCA_page = DCA_pages[the_page]
+        DCA_page_found = 1
+    if (DCA_page_found == 1):
+      DCA_name = DCA_page["name"]
+      if (DCA_name == ""):
+        DCA_name = "Solo"
+      this_DCA_info["name"] = DCA_name
+      this_DCA_info["profiles"] = DCA_page["profiles"]
+
+  if (do_trace == 1):
+    tracefile.write ("DCA_info for page " + this_page + ":\n")
+    pprint.pprint (DCA_info, tracefile)
+
+  # Write profile IDs for each DCA
+  first_DCA = 1
+  for DCA_number in range (0,8):
+    this_DCA_info = DCA_info[DCA_number]
+    if (do_trace == 1):
+      tracefile.write ("this_DCA_info for DCA " + str(DCA_number) + ":\n")
+      pprint.pprint (this_DCA_info, tracefile)
+    if (first_DCA == 0):
+      listfile.write (",")
+    listfile.write ("'")
+    if ("profiles" in this_DCA_info):
+      first_profile = 1
+      the_profiles = this_DCA_info["profiles"]
+      for profile_ID in the_profiles:
+        if (first_profile == 0):
+          listfile.write (",")
+        listfile.write (str(profile_ID))
+        if (do_trace == 1):
+          tracefile.write ("DCA " + str(DCA_number) +
+                           " gets profile " + str(profile_ID) + ".\n")
+        first_profile = 0
+    listfile.write ("'")
+    first_DCA = 0
+
+  # Write the name of each DCA
+  first_DCA = 1
+  for DCA_number in range (0,8):
+    this_DCA_info = DCA_info[DCA_number]
+    if ("name" in this_DCA_info):
+      listfile.write (", '" + this_DCA_info["name"] + "'")
+    else:
+      listfile.write (", ''")
+  listfile.write (",'', '', '', '', '');\n")
+  cue_number = cue_number + 1
+  
+listfile.write ("CREATE TABLE 'positions' ('id' " +
+                "INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "'name' TEXT, 'shortName' TEXT, 'delay' NUMERIC, " +
+                "'pan' NUMERIC);\n")
+listfile.write ("INSERT INTO positions VALUES(0, 'Centre Stage', " +
+                "'CS', 2, 0);\n")
+num_positions = 1
+
+listfile.write ("CREATE TABLE 'profiles' ('id' " +
+                "INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "'channel' INTEGER, 'name' TEXT, " +
+                "'default' INTEGER DEFAULT 0, 'data' TEXT);\n")
+
+if (do_trace == 1):
+  tracefile.write ("profile_list 6:\n")
+  pprint.pprint (profile_list, tracefile)
+
+for profile in profile_list:
+  listfile.write ("INSERT INTO profiles VALUES (")
+  listfile.write (str(profile["ID"]) + ", ")
+  listfile.write (str(profile["microphone"]) + ", ")
+  listfile.write ("'" + profile["name"])
+  listfile.write ("', ")
+  listfile.write ("1,'');\n")
+
+num_profiles = len(profile_list)
+
+listfile.write ("CREATE TABLE 'ensembles' ('id' " +
+                "INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "'name' TEXT, 'channels' TEXT);\n")
+listfile.write ("INSERT INTO ensembles VALUES (1, 'All', '")
+first_profile=1
+for the_profile in profile_list:
+  if (first_profile == 0):
+    listfile.write (",")
+  listfile.write (str(the_profile["ID"]))
+  first_profile=0
+listfile.write ("');\n")
+num_ensembles = 1
+
+# more ensembles
+listfile.write ("CREATE TABLE 'snippetCache' (" +
+                "'snippet' INTEGER PRIMARY KEY, " +
+                "'name' TEXT);\n")
+for snippet in range (0, 100):
+  listfile.write ("INSERT INTO snippetCache VALUES (" + str(snippet) +
+                  ", NULL);\n")
+listfile.write ("CREATE TABLE 'fxCache' (" +
+                "'fx' INTEGER PRIMARY KEY, 'name' TEXT);\n")
+
+listfile.write ("DELETE FROM sqlite_sequence;\n")
+listfile.write ("INSERT INTO sqlite_sequence VALUES('positions', " +
+                str(num_positions) + ");\n")
+listfile.write ("INSERT INTO sqlite_sequence VALUES('ensembles', " +
+                str(num_ensembles) + ");\n")
+listfile.write ("INSERT INTO sqlite_sequence VALUES('profiles', " +
+                str(num_profiles) + ");\n")
+listfile.write ("CREATE UNIQUE INDEX 'cueID' ON 'cues' ('number', 'point');\n")
+listfile.write ("COMMIT;\n")
+listfile.close()
+
 #
 # Output a file showing when each microphone must be switched on
 # and off.  When switching a microphone on, indicate its group,
@@ -2422,13 +3229,41 @@ for this_page in page_list:
 # The first is intended to be pasted into the script so it can be
 # used with a manual sound board, and so is very brief.
 # The annotated version is intended for
-# programming a sequencer and so includes the character name.
+# programming a sequencer and so includes the profile name.
 
-# Given a microphone and a page, find the corresponding character's name.
-def find_character (the_microphone, the_page):
-  the_character, the_actor = character_log [the_page, the_microphone]
-  return (quote_for_tex(the_character ["name"]))
+def find_profile_tex (the_microphone, the_page):
+  profile_ID, group_name = find_profile [(the_page, the_microphone)]
+  for this_profile in profile_list:
+    if (this_profile["ID"] == profile_ID):
+      return (quote_for_tex(this_profile["name"]))
 
+# Given a microphone and page, find the corresoonding DCA and its name
+def find_DCA (the_microphone, the_page):
+  if (do_trace == 1):
+    tracefile.write ("Finding a DCA for microphone " + str(the_microphone) +
+                     " on page " + the_page + ".\n")
+  for DCA_number in DCAs:
+    this_DCA = DCAs[DCA_number]
+    if ("pages" in this_DCA):
+      DCA_pages = this_DCA["pages"]
+      if (the_page in DCA_pages):
+        DCA_page = DCA_pages[the_page]
+        the_profiles = DCA_page["profiles"]
+        for profile_ID in the_profiles:
+          for the_profile in profile_list:
+            if (the_profile["ID"] == profile_ID and
+                the_profile ["microphone"] == the_microphone):
+              if (do_trace == 1):
+                tracefile.write ("Found DCA " + str(this_DCA["number"]) +
+                                 " for microphone " + str(the_microphone) +
+                                 " on page " + the_page + ".\n")
+              return (this_DCA, DCA_page["name"])
+  if (do_trace == 1):
+    tracefile.write ("No DCA found for microphone " +
+                       str(the_microphone) +
+                       " on page " + the_page + ".\n")
+  return (None, None)
+          
 max_microphones_in_use_count = 0
 microphone_cue_count = 0
 max_microphones_in_use_page = ""
@@ -2480,12 +3315,16 @@ for this_page in page_list:
            first_microphone = 0
         listfile1.write (str(this_microphone))
         listfile2.write ("character " +
-                         find_character (this_microphone, this_page) +
+                         find_profile_tex (this_microphone, this_page) +
                          " on microphone " + str(this_microphone))
         group = microphone_group [(this_page, this_microphone)]
         if (group != ""):
           listfile1.write (" (" + group + ")")
           listfile2.write (" in group " + group)
+        the_DCA, the_name = find_DCA (this_microphone, this_page)
+        if (the_DCA != None):
+          listfile2.write (" using DCA " + str(the_DCA["number"]) +
+                           " named " + the_name)
       listfile1.write (". ")
       listfile2.write (". ")
     if (len(turn_off_list) > 0):
@@ -2500,7 +3339,7 @@ for this_page in page_list:
            first_microphone = 0
         listfile1.write (str(this_microphone))
         listfile2.write ("character " +
-                         find_character (this_microphone, prev_page) +
+                         find_profile_tex (this_microphone, prev_page) +
                          " on microphone " + str(this_microphone))
       listfile1.write (". ")
       listfile2.write (". ")
@@ -2522,28 +3361,41 @@ for this_page in page_list:
                             prev_group +
                             " to " + group)
             listfile2.write ("Character " +
-                             find_character(this_microphone, this_page) +
+                             find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
                              " moves from group " +
                              prev_group +
                              " to group " + group)
+            the_DCA, the_name = find_DCA (this_microphone, this_page)
+            if (the_DCA != None):
+              listfile2.write (" using DCA " + str(the_DCA["number"]) +
+                               " named " + the_name)
           else:
             listfile1.write (str(this_microphone) +
                             " moves to " + group)
             listfile2.write ("Character " +
-                             find_character(this_microphone, this_page) +
+                             find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
                              " moves to group " + group)
+            the_DCA, the_name = find_DCA (this_microphone, this_page)
+            if (the_DCA != None):
+              listfile2.write (" using DCA " + str(the_DCA["number"]) +
+                               " named " + the_name)
         else:
           listfile1.write (str(this_microphone) +
                           " leaves " + prev_group)
           listfile2.write ("Character " +
-                           find_character(this_microphone, this_page) +
+                           find_profile_tex(this_microphone, this_page) +
                            " on microphone " +
                            str(this_microphone) +
                            " leaves group " + prev_group)
+          the_DCA, the_name = find_DCA (this_microphone, this_page)
+          if (the_DCA != None):
+            listfile2.write (" now using DCA " + str(the_DCA["number"]) +
+                               " named " + the_name)
+
       listfile1.write (". ")
       listfile2.write (". ")
 
@@ -2559,9 +3411,14 @@ for this_page in page_list:
         if (len(microphone_list) == 1):
           listfile1.write ("(Still on: " + str(microphone_list[0]) + ".)")
           listfile2.write ("Note that character " +
-                           find_character (microphone_list[0], this_page) +
+                           find_profile_tex (microphone_list[0], this_page) +
                            " on microphone " + str(microphone_list[0]) +
-                           " is still on.")
+                           " is still on,")
+          the_DCA, the_name = find_DCA (microphone_list[0], this_page)
+          if (the_DCA != None):
+            listfile2.write (" using DCA " + str(the_DCA["number"]) +
+                             " named " + the_name)
+
         else:
           listfile1.write ("(Still on: ")
           listfile2.write ("Note that characters ")
@@ -2573,11 +3430,16 @@ for this_page in page_list:
             else:
               first_microphone = 0
             listfile1.write (str(this_microphone))
-            listfile2.write (find_character(this_microphone, this_page) +
-                             " on microphone "+
+            listfile2.write (find_profile_tex(this_microphone, this_page) +
+                             " on microphone " +
                              str(this_microphone))
+            the_DCA, the_name = find_DCA (this_microphone, this_page)
+            if (the_DCA != None):
+              listfile2.write (" using DCA " + str(the_DCA["number"]) +
+                               " named " + the_name)
           listfile1.write (".)")
-          listfile2.write (" are still on.")
+          listfile2.write (" are still on.  ")
+            
     if (max_microphones_in_use_count < len(microphone_list)):
       max_microphones_in_use_count = len(microphone_list)
       max_microphones_in_use_page = this_page
@@ -2601,7 +3463,7 @@ if (len(prev_microphone_list) != 0):
       first_microphone = 0
     listfile1.write (str(this_microphone))
     listfile2.write ("character " +
-                     find_character(this_microphone, this_page) +
+                     find_profile_tex(this_microphone, this_page) +
                      " on microphone " +
                      str(this_microphone))
   listfile1.write (". (All off.)" + "}}" + "\n")

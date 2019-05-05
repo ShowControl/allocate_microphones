@@ -9,7 +9,7 @@ verify_files.sh : verify_files_template.sh perils_microphones.pdf perils_timelin
 	if [ ! -d "expected_output" ] ; then mkdir expected_output ; rsync -rv $(srcdir)/expected_output/ expected_output/ ; touch copied_from_srcdir ; fi
 	chmod +x verify_files.sh
 
-CLEANFILES = perils_microphones.aux perils_microphones.log perils_microphones.pdf perils_microphones.toc perils_timeline.aux perils_timeline.log perils_timeline.pdf perils_timeline.toc perils.txt.activities.tex perils.txt.actors.tex perils.txt.assignments.tex perils.txt.csv perils.txt.microphone_channels.tex perils.txt.microphone_labels.tex perils.txt.microphone_moves.tex perils.txt.microphone_switching.tex perils.txt.microphone_switching_annotated.tex perils.txt.stage_manager_after_show.tex perils.txt.stage_manager_at_intermission.tex perils.txt.stage_manager_before_show.tex perils.txt.stage_manager_during_show.tex verify_files.sh 
+CLEANFILES = perils_microphones.aux perils_microphones.log perils_microphones.pdf perils_microphones.toc perils_timeline.aux perils_timeline.log perils_timeline.pdf perils_timeline.toc perils.txt.activities.tex perils.txt.actors.tex perils.txt.assignments.tex perils.txt.csv perils.txt.microphone_channels.tex perils.txt.microphone_labels.tex perils.txt.microphone_moves.tex perils.txt.microphone_switching.tex perils.txt.microphone_switching_annotated.tex perils.txt.stage_manager_after_show.tex perils.txt.stage_manager_at_intermission.tex perils.txt.stage_manager_before_show.tex perils.txt.stage_manager_during_show.tex perils.txt.X32TC.txt verify_files.sh 
 
 
 perils.txt.activities.tex : perils.txt

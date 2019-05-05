@@ -188,9 +188,9 @@ between groups.
 
 .microphone_switching_annotated.tex
 	Contains the same information as .microphone_switching.tex but
-	in an expanded form, with character names.  If you have a mixer
-	board with a sequencer, this list is intended for the person
-	who programs the sequencer.
+in an expanded form, with character names.  If you have a mixer
+board with a sequencer, this list is intended for the person
+who programs the sequencer.
 	
 .stage_manager_after_show.tex
 .stage_manager_at_intermission.tex
@@ -201,6 +201,15 @@ at the specified times.
 .stage_manager_during_show.tex
 	If the stage manager, rather than the actors, oversees microphone
 swapping, this list shows him what he must do, and when.
+
+.X32TC.txt
+	A database, in sqlite3 dump format, for the program X32 Theatre Control.
+It switches on actor's microphones as needed, and places
+groups in DCAs so they can be controlled together.  X32 Theatre Control
+is a program to extend the capabilities of the Behringer X32 audio mixer.
+Convert this file to an sqlite3 database for X32 Theatre Control with
+	rm -f file.X32TC.sqlite3
+	sqlite3 file.X32TC.sqlite3 -init file.txt.X32TC.txt ""
 
 To place these lists in a document requires LaTeX, a document preparation system
 used for scientific articles.  Each of the above .tex files is included in
@@ -512,6 +521,8 @@ microphone switching section, so you will know into which group
 to place each microphone.  You can then assign a volume slider
 to each group that you use.
 
+See below for more information on mixers with sequencers.
+
 Q: How do I deal with last-minute changes?
 
 A: Once all the parts are cast, actors can start rehearsing with
@@ -562,9 +573,14 @@ and make sure they print correctly.
 Here is the full syntax of the play description file:
 
 [show <showname>] // The name of the show
+venue=<venuename> // Where the show is performed
+designer=<designername> // The name of the person who created this file
 [microphones <number>]	// the number of microphones available in the theatre
 	// if omitted or zero, the program uses the minimum number needed for
 	// the show.
+[DCA <number>]      // The number of Digitally-controlled Amplifiers
+     		    // on the mixer
+style=solo or nosolo // See below for DCA style information
 [character <name>]  // information about a character, can be repeated
 	// the names must be unique
 [actor <name>]  // information about an actor, can be repeated
@@ -623,10 +639,9 @@ Actors early in the actor list have priority over those below them
 for keeping their microphones.
 
 To facilitate use during early rehearsals, not all characters need
-to be cast.  If a character enters who is unknown, the character is
-added to the character list.  If the actor who is to play a character
+to be cast.  If the actor who is to play a character
 is not specified, a unique actor named "Uncast #<number>" is
-added to the actor list.  As the show is cast the acual actors
+added to the actor list.  As the show is cast the actual actors
 and their rolls can be added and the program re-run to improve 
 microphone assignments.  Uncast parts are assumed played by unique 
 actors, which is the worst case for allocating microphones.
@@ -640,6 +655,32 @@ is given to exchanging microphones during intermission.  When this
 is also insufficient, microphones are exchanged when actors are
 off-stage.  Even in this case, actors will generally keep their
 microphones, loaning them to other actors when necessary.
+
+Mixers with DCAs and sequencers.
+
+Mixers with digitally-controlled amplifiers and sequencers have
+become affordable.  Allocate_microphones supports two ways of using
+these modern mixers: solo and nosolo.
+
+Solo style, which is the default, assigns characters who are not in a group
+to DCA channel 0, named Solo.  Groups are spread across the DCAs so
+you can have a slider for each active group.  This style uses the
+sequencer to control the mutes and so requires lots of cues.
+
+Nosolo style places characters who are not in a group into a group
+named for the chracter.  These groups are then spread across the DCAs.
+You can use many fewer cues, and use the DCA sliders or mutes to
+turn microphones on and off between cues.  This style requires fewer
+cues, but depends more on the mixing board operator between cues.
+
+If you have a Behringer X32 mixer and the X32 Theatre Control program
+to drive it, allocate_microphones outputs an sqlite3 database which
+can be loaded into X32 Theatre Control.  X32 Theatre Control will
+sequence the mixer and use the scribble strips in the DCA to say
+which group is being controlled.  The documentation for X32 Theatre
+Control suggests that the mixer operator will use the DCA sliders
+to control microphones between cues, which was the inspiration
+for the nosolo style.  
 
 Extended Example
 
@@ -664,6 +705,7 @@ This file is also provided separately in the distribution,
 in examples/The_Music_Man/music_man.txt.
 
 // The Music Man, John Sauter, April 12, 2011
+// Updated for X32 Theatre Control support May 5, 2019
 // Mrs. Squires is renamed Mrs. Britt
 // Man #1 on pages 108 and 109 are the same character
 // Man #2 page 114 is renamed Woman page 114
@@ -672,17 +714,11 @@ in examples/The_Music_Man/music_man.txt.
 // time to get microphones between 04 Iowa Stubborn and 07 Piano Lesson
 [show The Music Man]
 [microphones 24]
-[character Conductor]
-[character Salesman #1]
-[character Salesman #2]
-[character Salesman #3]
-[character Salesman #4]
-[character Salesman #5]
-[character Charlie Cowell]
-[character Newspaper Reader #1]
-[character Newspaper Reader #2]
-[character Newspaper Reader #3]
+[DCA 8]
+style=solo
+
 [character Harold]
+[character Charlie Cowell]
 [character Mayor Shinn]
 [character Eulalie]
 [character Alma]
@@ -694,6 +730,54 @@ in examples/The_Music_Man/music_man.txt.
 [character Winthrop]
 [character Tommy]
 [character Zaneeta]
+[character Oliver]
+[character Olin]
+[character Mrs. Paroo]
+[character Maud]
+[character Mrs. Britt]
+[character Gracie]
+[character Amaryllis]
+[character Constable Locke]
+[character Conductor]
+[character Salesman #1]
+[character Salesman #2]
+[character Salesman #3]
+[character Salesman #4]
+[character Salesman #5]
+[character Newspaper Reader #1]
+[character Newspaper Reader #2]
+[character Newspaper Reader #3]
+[character Man page 11]
+[character Boy page 11]
+[character contrary solo page 11]
+[character Farmer page 12]
+[character Wife page 12]
+[character Man page 35]
+[character Man #2 page 35]
+[character 1st voice page 67]
+[character 2nd voice page 67]
+[character 3rd voice page 68]
+[character 4th voice page 68]
+[character 5th voice page 68]
+[character 6th voice page 68]
+[character 7th voice page 68]
+[character 8th voice page 68]
+[character 9th voice page 69]
+[character 10th voice page 69]
+[character 11th voice page 69]
+[character Boy page 77]
+[character Man #1 page 108]
+[character Man #2 page 109]
+[character Woman page 109]
+[character Man #1 page 114]
+[character Man #3 page 114]
+[character Woman #1 page 114]
+[character Man #2 page 114]
+[character Woman #3 page 114]
+[character Woman #2 page 114]
+[character Man #1 page 115]
+[character Woman page 115]
+[character Driver]
 
 [actor Stuart Harmon]
 microphone=1

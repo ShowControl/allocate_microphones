@@ -107,8 +107,6 @@ AM_V_at = $(am__v_at_@AM_V@)
 am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
-depcomp =
-am__maybe_remake_depfiles =
 SOURCES =
 DIST_SOURCES =
 am__can_run_installinfo = \
@@ -408,7 +406,7 @@ top_srcdir = @top_srcdir@
 dist_check_DATA = perils_microphones.tex perils_timeline.tex perils.txt expected_output/perils.txt.activities.tex expected_output/perils.txt.actors.tex expected_output/perils.txt.assignments.tex expected_output/perils.txt.csv expected_output/perils.txt.microphone_channels.tex expected_output/perils.txt.microphone_labels.tex expected_output/perils.txt.microphone_moves.tex expected_output/perils.txt.microphone_switching.tex expected_output/perils.txt.stage_manager_after_show.tex expected_output/perils.txt.stage_manager_at_intermission.tex expected_output/perils.txt.stage_manager_before_show.tex expected_output/perils.txt.stage_manager_during_show.tex
 dist_check_SCRIPTS = verify_files_template.sh
 TESTS = verify_files.sh
-CLEANFILES = perils_microphones.aux perils_microphones.log perils_microphones.pdf perils_microphones.toc perils_timeline.aux perils_timeline.log perils_timeline.pdf perils_timeline.toc perils.txt.activities.tex perils.txt.actors.tex perils.txt.assignments.tex perils.txt.csv perils.txt.microphone_channels.tex perils.txt.microphone_labels.tex perils.txt.microphone_moves.tex perils.txt.microphone_switching.tex perils.txt.microphone_switching_annotated.tex perils.txt.stage_manager_after_show.tex perils.txt.stage_manager_at_intermission.tex perils.txt.stage_manager_before_show.tex perils.txt.stage_manager_during_show.tex verify_files.sh 
+CLEANFILES = perils_microphones.aux perils_microphones.log perils_microphones.pdf perils_microphones.toc perils_timeline.aux perils_timeline.log perils_timeline.pdf perils_timeline.toc perils.txt.activities.tex perils.txt.actors.tex perils.txt.assignments.tex perils.txt.csv perils.txt.microphone_channels.tex perils.txt.microphone_labels.tex perils.txt.microphone_moves.tex perils.txt.microphone_switching.tex perils.txt.microphone_switching_annotated.tex perils.txt.stage_manager_after_show.tex perils.txt.stage_manager_at_intermission.tex perils.txt.stage_manager_before_show.tex perils.txt.stage_manager_during_show.tex perils.txt.X32TC.txt verify_files.sh 
 all: all-am
 
 .SUFFIXES:
@@ -422,9 +420,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu --ignore-deps examples/Perils_of_Pauline/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/Perils_of_Pauline/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu --ignore-deps examples/Perils_of_Pauline/Makefile
+	  $(AUTOMAKE) --gnu examples/Perils_of_Pauline/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
