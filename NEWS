@@ -1,3 +1,5 @@
+2019-05-12	Fix a bug in sharing DCAs between groups.  Version 3.1.
+
 2019-05-05	Add support for X32 Theatre Control.  Version 3.0.
 
 2019-04-01	In the microphone assignments section, sort actors by

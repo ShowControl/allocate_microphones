@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.0 2019-05-04',
+                     version='allocate_microphones 3.1 2019-05-012',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -2909,7 +2909,11 @@ if (do_trace == 1):
   tracefile.write ("DCAs 1:\n")
   pprint.pprint (DCAs, tracefile)  
 
-# Find a good DCA for this group on this page.
+# Find a good DCA for this group on this page.  In solo style, the blank
+# group goes in DCA 0, named Solo.  Nothing else goes there.
+# Otherwise, prefer the previously used DCA, if it isn't being used.
+# If it is, find the least-occupied unused DCA.  If there is no DCA
+# that is unused for this page, share the one that is least used.
 def find_good_DCA (this_group, this_page):
   if (do_trace == 1):
     tracefile.write ("Finding a good DCA for group " + this_group["name"] +
@@ -2947,15 +2951,19 @@ def find_good_DCA (this_group, this_page):
   if (DCA_found == 1):
     return (best_DCA)
   # No DCA was found with an empty slot.  We must share.
+  if (do_trace == 1):
+    tracefile.write ("We must share a DCA.\n")
   best_DCA_size = -1
+  DCA_found = 0
   for DCA_number in DCAs:
     this_DCA = DCAs[DCA_number]
     DCA_pages = this_DCA["pages"]
     DCA_size = len(this_DCA["pages"])
-    DCA_found = 0
     if (DCA_number == old_DCA_number):
       DCA_size = DCA_size / 2
     if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
+      if (do_trace == 1):
+        tracefile.write ("Nominating DCA " + str(DCA_number) + ".\n")
       best_DCA_size = DCA_size
       best_DCA = this_DCA
       DCA_found = 1
@@ -2963,6 +2971,9 @@ def find_good_DCA (this_group, this_page):
     return (best_DCA)
   if (do_trace == 1):
     tracefile.write ("No good DCA found.\n")
+    for DCA_number in DCAs:
+      tracefile.write ("DCA number " + str(DCA_number) + ":\n")
+      pprint.pprint (DCAs[DCA_number], tracefile)
   return None
 
 # Assign groups to DCAs.  The groups are processed in the order
@@ -3324,7 +3335,7 @@ for this_page in page_list:
         the_DCA, the_name = find_DCA (this_microphone, this_page)
         if (the_DCA != None):
           listfile2.write (" using DCA " + str(the_DCA["number"]) +
-                           " named " + the_name)
+                           " named " + quote_for_tex(the_name))
       listfile1.write (". ")
       listfile2.write (". ")
     if (len(turn_off_list) > 0):
@@ -3366,11 +3377,11 @@ for this_page in page_list:
                              str(this_microphone) +
                              " moves from group " +
                              prev_group +
-                             " to group " + group)
+                             " to group " + quote_for_tex(group))
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
               listfile2.write (" using DCA " + str(the_DCA["number"]) +
-                               " named " + the_name)
+                               " named " + quote_for_tex(the_name))
           else:
             listfile1.write (str(this_microphone) +
                             " moves to " + group)
@@ -3378,11 +3389,11 @@ for this_page in page_list:
                              find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
-                             " moves to group " + group)
+                             " moves to group " + quote_for_tex(group))
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
               listfile2.write (" using DCA " + str(the_DCA["number"]) +
-                               " named " + the_name)
+                               " named " + quote_for_tex(the_name))
         else:
           listfile1.write (str(this_microphone) +
                           " leaves " + prev_group)
@@ -3390,11 +3401,11 @@ for this_page in page_list:
                            find_profile_tex(this_microphone, this_page) +
                            " on microphone " +
                            str(this_microphone) +
-                           " leaves group " + prev_group)
+                           " leaves group " + quote_for_tex(prev_group))
           the_DCA, the_name = find_DCA (this_microphone, this_page)
           if (the_DCA != None):
             listfile2.write (" now using DCA " + str(the_DCA["number"]) +
-                               " named " + the_name)
+                               " named " + quote_for_tex(the_name))
 
       listfile1.write (". ")
       listfile2.write (". ")
@@ -3417,7 +3428,7 @@ for this_page in page_list:
           the_DCA, the_name = find_DCA (microphone_list[0], this_page)
           if (the_DCA != None):
             listfile2.write (" using DCA " + str(the_DCA["number"]) +
-                             " named " + the_name)
+                             " named " + quote_for_tex(the_name))
 
         else:
           listfile1.write ("(Still on: ")
@@ -3436,7 +3447,7 @@ for this_page in page_list:
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
               listfile2.write (" using DCA " + str(the_DCA["number"]) +
-                               " named " + the_name)
+                               " named " + quote_for_tex(the_name))
           listfile1.write (".)")
           listfile2.write (" are still on.  ")
             
