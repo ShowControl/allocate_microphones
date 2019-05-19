@@ -414,7 +414,7 @@ def make_pageno (value):
           if (do_trace == 1):
             pprint.pprint (middle_text, tracefile)
             pprint.pprint (middle_text.groupdict(), tracefile)
-            text = middle_text.groupdict() ["text"]
+          text = middle_text.groupdict() ["text"]
         while (len(text) < 5):
           text = text + "0"
         if (do_trace == 1):
