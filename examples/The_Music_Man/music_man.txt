@@ -1,77 +1,124 @@
 // The Music Man, John Sauter, April 12, 2011
-// Updated for X32 Theatre Support May 5, 2019
-// Mrs. Squires is renamed Mrs. Britt
-// Man #1 on pages 108 and 109 are the same character
-// Man #2 page 114 is renamed Woman page 114
-// The Wells Fargo Wagon driver and Newspaper Readers 4 and 5 don't get microphones
-// Boy page 11 doesn't get a microphone because Amarylis and Mrs. Paroo don't have
-// time to get microphones between 04 Iowa Stubborn and 07 Piano Lesson
+// Updated for X32 Theatre Control Support June 1, 2019.
+
 [show The Music Man]
 [microphones 24]
 [DCA 8]
-style=solo
+style=nosolo
 
 [character Harold]
+preferred_DCA=0
 [character Charlie Cowell]
 [character Mayor Shinn]
 [character Eulalie]
 [character Alma]
 [character Ethel]
 [character Jacey]
+group=Quartet
 [character Marcellus]
 [character Ewart]
+group=Quartet
 [character Marian]
+preferred_DCA=1
+[character Amaryllis]
 [character Winthrop]
 [character Tommy]
 [character Zaneeta]
 [character Oliver]
+group=Quartet
 [character Olin]
+group=Quartet
 [character Mrs. Paroo]
 [character Maud]
-[character Mrs. Britt]
+[character Mrs. Squires]
 [character Gracie]
-[character Amaryllis]
 [character Constable Locke]
 [character Conductor]
 [character Salesman #1]
+group=Train passengers
 [character Salesman #2]
+group=Train passengers
 [character Salesman #3]
+group=Train passengers
 [character Salesman #4]
+group=Train passengers
 [character Salesman #5]
+group=Train passengers
 [character Newspaper Reader #1]
+group=Train passengers
 [character Newspaper Reader #2]
+group=Train passengers
 [character Newspaper Reader #3]
+group=Train passengers
+[character Newspaper Reader #4]
+group=Train passengers
+[character Newspaper Reader #5]
+group=Train passengers
 [character Man page 11]
+group=Men
 [character Boy page 11]
+group=Boys
 [character contrary solo page 11]
 [character Farmer page 12]
+group=Men
 [character Wife page 12]
+group=Women
 [character Man page 35]
+group=Men
 [character Man #2 page 35]
+group=Men
 [character 1st voice page 67]
+group=WFW soloists
 [character 2nd voice page 67]
+group=WFW soloists
 [character 3rd voice page 68]
+group=WFW soloists
 [character 4th voice page 68]
+group=WFW soloists
 [character 5th voice page 68]
+group=WFW soloists
 [character 6th voice page 68]
+group=WFW soloists
 [character 7th voice page 68]
+group=WFW soloists
 [character 8th voice page 68]
+group=WFW soloists
 [character 9th voice page 69]
+group=WFW soloists
 [character 10th voice page 69]
+group=WFW soloists
 [character 11th voice page 69]
+group=WFW soloists
 [character Boy page 77]
+group=Boys
 [character Man #1 page 108]
+group=Men
+[character Man #1 page 109]
+group=Men
 [character Man #2 page 109]
+group=Men
 [character Woman page 109]
+group=Women
 [character Man #1 page 114]
+group=Men
 [character Man #3 page 114]
+group=Men
 [character Woman #1 page 114]
+group=Women
 [character Man #2 page 114]
+group=Men
 [character Woman #3 page 114]
+group=Women
 [character Woman #2 page 114]
+group=Women
 [character Man #1 page 115]
+group=Women
 [character Woman page 115]
+group=Women
 [character Driver]
+
+[group Quartet]
+preferred_DCA=2
 
 [actor Stuart Harmon]
 microphone=1
@@ -176,6 +223,7 @@ character=Man #1 page 115
 actor=Rich Sparks
 character=Salesman #1
 character=Man #1 page 108
+character=Man #1 page 109
 [role]
 actor=Ken Cox
 character=Conductor
@@ -218,7 +266,7 @@ actor=Jenn Stover
 character=Ethel
 [role]
 actor=Karen Hammes
-character=Mrs. Britt
+character=Mrs. Squires
 [role]
 actor=Lucy Stover
 character=Gracie
@@ -301,9 +349,13 @@ character=Driver
 [enter Charlie Cowell]
 [enter Newspaper Reader #1]
 [enter Newspaper Reader #2]
-speaks=no
+[quiet Newspaper Reader #2]
 [enter Newspaper Reader #3]
-speaks=no
+[quiet Newspaper Reader #3]
+[enter Newspaper Reader #4]
+[quiet Newspaper Reader #4]
+[enter Newspaper Reader #5]
+[quiet Newspaper Reader #5]
 [enter Harold]
 [quiet Harold]
 [page 2a]
@@ -323,8 +375,10 @@ speaks=no
 [sound 01 train chuffing in time to song]
 [page 6a]
 [duration 10]
-//[speak Newspaper Reader #2]
-//[speak Newspaper Reader #3]
+[speak Newspaper Reader #2]
+[speak Newspaper Reader #3]
+[speak Newspaper Reader #4]
+[speak Newspaper Reader #5]
 [page 6b]
 [duration 20]
 [sound 03 train whistle]
@@ -344,7 +398,7 @@ speaks=no
 [duration 1]
 [exit Conductor]
 [page 10a]
-[enter Conductor]	// speaks from off-stage in script, but on-stage in our production
+[enter Conductor]	// speaks from off-stage in script
 [begin sound background daytime outdoors]
 [speak Harold]
 [page 10b]
@@ -358,13 +412,14 @@ speaks=no
 [exit Newspaper Reader #1]
 [exit Newspaper Reader #2]
 [exit Newspaper Reader #3]
+[exit Newspaper Reader #4]
+[exit Newspaper Reader #5]
 [page 10c]
 [scene 2]
 [begin song 04 Iowa Stubborn]
 [enter Mayor Shinn]
 [quiet Mayor Shinn]
 [enter Boy page 11]
-speaks=no
 [enter Man page 11]
 [quiet Man page 11]
 [enter Amaryllis]
@@ -389,7 +444,7 @@ speaks=no
 [page 11b]
 [duration 20]
 [speak contrary solo page 11]
-//[speak Boy page 11]
+[speak Boy page 11]
 [speak Man page 11]
 [speak Mayor Shinn]
 [speak Alma]
@@ -525,8 +580,8 @@ speaks=no
 [quiet Man #2 page 35]
 [enter Maud]
 [quiet Maud]
-[enter Mrs. Britt]
-[quiet Mrs. Britt]
+[enter Mrs. Squires]
+[quiet Mrs. Squires]
 [page 31d]
 [duration 10]
 [speaking Mayor Shinn]
@@ -626,7 +681,7 @@ speaks=no
 [exit Alma]
 [exit Maud]
 [exit Ethel]
-[exit Mrs. Britt]
+[exit Mrs. Squires]
 [exit Constable Locke]	// he may exit earlier
 [end song 14 Ice Cream/Sincere]
 [exit Jacey]
@@ -652,7 +707,7 @@ speaks=no
 [exit Marcellus]
 [enter Alma]
 [enter Maud]
-[enter Mrs. Britt]
+[enter Mrs. Squires]
 [enter Ethel]
 [enter Eulalie]
 [page 50]
@@ -672,7 +727,7 @@ speaks=no
 [exit Harold]
 [exit Alma]
 [exit Maud]
-[exit Mrs. Britt]
+[exit Mrs. Squires]
 [exit Ethel]
 [exit Eulalie]
 [exit Jacey]
@@ -742,11 +797,11 @@ speaks=no
 [page 61]
 [enter Marian]
 [page 62a]
-//[exit Marian]
+[exit Marian]
 [page 62b]
 [exit Harold]
 [page 62c]
-//[enter Marian]
+[enter Marian]
 [page 63a]
 [enter Winthrop]
 [page 63b]
@@ -864,10 +919,9 @@ speaks=no
 [end song 24 The Wells Fargo Wagon]
 [page 69g]
 [enter Driver]
-speaks=no
 [page 70a]
 [duration 5]
-//[quiet Driver]
+[quiet Driver]
 [song 25 Finale Act 1]
 [page 70b]
 [duration 20]
@@ -920,7 +974,7 @@ speaks=no
 speaks=no
 [enter Ethel]
 speaks=no
-[enter Mrs. Britt]
+[enter Mrs. Squires]
 speaks=no
 [enter Eulalie]
 [enter Marian]
@@ -983,7 +1037,7 @@ speaks=no
 [song 32 Shipoopi Dance --- Part 3]
 [exit Alma]	// the script calls for "several" of the ladies to rush off
 [exit Maud]
-[exit Mrs. Britt]
+[exit Mrs. Squires]
 [page 77e]
 [duration 15]
 [song 33 Shipoopi Playoff]
@@ -993,7 +1047,7 @@ speaks=no
 speaks=no
 [enter Maud]
 speaks=no
-[enter Mrs. Britt]
+[enter Mrs. Squires]
 speaks=no
 [speaking Zaneeta]
 [speaking Tommy]
@@ -1004,7 +1058,7 @@ speaks=no
 [exit Alma]
 [exit Maud]
 [exit Ethel]
-[exit Mrs. Britt]
+[exit Mrs. Squires]
 [exit Jacey]
 [exit Ewart]
 [exit Oliver]
@@ -1027,8 +1081,8 @@ speaks=no
 [quiet Maud]
 [enter Ethel]
 [quiet Ethel]
-[enter Mrs. Britt]
-[quiet Mrs. Britt]
+[enter Mrs. Squires]
+[quiet Mrs. Squires]
 [page 80b]
 [exit Mayor Shinn]
 [exit Zaneeta]
@@ -1044,7 +1098,7 @@ speaks=no
 [speaking Ethel]
 [speaking Alma]
 [speaking Maud]
-[speaking Mrs. Britt]
+[speaking Mrs. Squires]
 [begin song 34 Pick-a-Little, Talk-a-Little (Reprise)]
 [page 83a]
 [duration 15]
@@ -1057,7 +1111,7 @@ speaks=no
 [exit Alma]
 [exit Maud]
 [exit Ethel]
-[exit Mrs. Britt]
+[exit Mrs. Squires]
 [exit Marian]
 [exit Eulalie]
 [page 84c]
@@ -1187,6 +1241,7 @@ speaks=no
 [enter Eulalie]
 [end song 41 Ice Cream Sociable]
 [enter Man #1 page 108]
+[enter Man #1 page 109]
 [enter Man #2 page 109]
 [enter Woman page 109]
 [enter Mayor Shinn]
@@ -1197,6 +1252,7 @@ speaks=no
 [exit Mayor Shinn]
 [exit Charlie Cowell]
 [exit Man #1 page 108]
+[exit Man #1 page 109]
 [exit Man #2 page 109]
 [exit Woman page 109]
 [page 109b]

@@ -403,10 +403,38 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dist_check_DATA = music_man_microphones.tex music_man_timeline.tex music_man.txt expected_output/music_man.txt.activities.tex expected_output/music_man.txt.actors.tex expected_output/music_man.txt.assignments.tex expected_output/music_man.txt.csv expected_output/music_man.txt.microphone_channels.tex expected_output/music_man.txt.microphone_labels.tex expected_output/music_man.txt.microphone_moves.tex expected_output/music_man.txt.microphone_switching.tex expected_output/music_man.txt.stage_manager_after_show.tex expected_output/music_man.txt.stage_manager_at_intermission.tex expected_output/music_man.txt.stage_manager_before_show.tex expected_output/music_man.txt.stage_manager_during_show.tex
+dist_check_DATA = music_man_microphones.tex \
+music_man_timeline.tex music_man.txt \
+expected_output/music_man.txt.activities.tex \
+expected_output/music_man.txt.actors.tex \
+expected_output/music_man.txt.assignments.tex \
+expected_output/music_man.txt.csv \
+expected_output/music_man.txt.microphone_channels.tex \
+expected_output/music_man.txt.microphone_labels.tex \
+expected_output/music_man.txt.microphone_moves.tex \
+expected_output/music_man.txt.microphone_switching.tex \
+expected_output/music_man.txt.stage_manager_after_show.tex \
+expected_output/music_man.txt.stage_manager_at_intermission.tex \
+expected_output/music_man.txt.stage_manager_before_show.tex \
+expected_output/music_man.txt.stage_manager_during_show.tex \
+expected_output/music_man.txt.X32TC.txt
+
 dist_check_SCRIPTS = verify_files_template.sh
 TESTS = verify_files.sh
-CLEANFILES = music_man_microphones.aux music_man_microphones.log music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux music_man_timeline.log music_man_timeline.pdf music_man_timeline.toc music_man.txt.activities.tex music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex music_man.txt.microphone_switching_annotated.tex music_man.txt.stage_manager_after_show.tex music_man.txt.stage_manager_at_intermission.tex music_man.txt.stage_manager_before_show.tex music_man.txt.stage_manager_during_show.tex music_man.txt.X32TC.txt verify_files.sh
+CLEANFILES = music_man_microphones.aux music_man_microphones.log \
+music_man_microphones.pdf music_man_microphones.toc music_man_timeline.aux \
+music_man_timeline.log music_man_timeline.pdf \
+music_man_timeline.toc music_man.txt.activities.tex \
+music_man.txt.actors.tex music_man.txt.assignments.tex music_man.txt.csv \
+music_man.txt.microphone_channels.tex music_man.txt.microphone_labels.tex \
+music_man.txt.microphone_moves.tex music_man.txt.microphone_switching.tex \
+music_man.txt.microphone_switching_annotated.tex \
+music_man.txt.stage_manager_after_show.tex \
+music_man.txt.stage_manager_at_intermission.tex \
+music_man.txt.stage_manager_before_show.tex \
+music_man.txt.stage_manager_during_show.tex \
+verify_files.sh music_man.txt.X32TC.txt
+
 all: all-am
 
 .SUFFIXES:

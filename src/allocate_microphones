@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.1 2019-05-012',
+                     version='allocate_microphones 3.2 2019-06-01',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -93,8 +93,9 @@ rolls = {}
 
 # groups is the dictionary of group names, indexed by name.
 # The empty string is the default group and so is always
-# present.  Each entry is a dictionary containing only the group number
-# and name.  More information will be added later.
+# present.  Each entry is a dictionary containing the group number
+# and name.  Optionally, it can contain preferred_DCA.
+# More information will be added later.
 
 groups = dict()
 group_number = 1
@@ -195,6 +196,11 @@ def character_start (value):
     print ("Character " + value + " already defined.")
     error_counter = error_counter + 1
     return
+  if (value in groups):
+    print ("Group " + value + " is already defined; " +
+           "character names must be different from group names.")
+    error_counter = error_counter + 1
+    return
   characters [value] = {}
   the_character = characters [value]
   the_character ["name"] = value
@@ -208,6 +214,11 @@ def character_keyword_value (keyword, value):
   global groups
   global group_number
   if (keyword == "group"):
+    if (value in characters):
+      print ("Character " + value + " already defined; " +
+             "group names must be different from character names.")
+      error_counter = error_counter + 1
+      return
     current_character ["group"] = value
     if (value not in groups):
       group_dict = dict()
@@ -216,11 +227,69 @@ def character_keyword_value (keyword, value):
       group_number = group_number + 1
       groups[value] = group_dict
     return
+  if (keyword == "preferred_DCA"):
+    if (do_trace == 1):
+      tracefile.write ("Preferred DCA of " + str(int(value)) +
+                       " for character " +
+                       current_character["name"] + ".\n")
+    try:
+      DCA_number = int(value)
+    except ValueError:
+      print ("DCA number must be an integer, not " + value)
+      error_counter = error_counter + 1
+      return
+    if (do_trace == 1):
+      tracefile.write ("Assigning " + str(DCA_number) + ".\n")
+    current_character ["preferred_DCA"] = DCA_number
+    return
   print ("Unknown character clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
   return
-  
+
 def character_end ():
+  current_character = ""
+  return
+
+current_group = ""
+def group_start (value):
+  global current_group
+  global error_counter
+  global groups
+  global group_number
+  if (value in characters):
+    print ("Character " + value + " already defined; " +
+           "group names must be different from character names.")
+    error_counter = error_counter + 1
+    return
+  if (value not in groups):
+    group_dict = dict()
+    group_dict["number"] = group_number
+    group_dict["name"] = value
+    group_number = group_number + 1
+    groups[value] = group_dict
+  current_group = value
+  return
+
+def group_keyword_value (keyword, value):
+  global current_group
+  global error_counter
+  global groups
+  if (keyword == "preferred_DCA"):
+    try:
+      DCA_number = int(value)
+    except ValueError:
+      print ("DCA number must be an integer, not " + value)
+      error_counter = error_counter + 1
+      return
+    group_dict = groups[current_group]
+    group_dict ["preferred_DCA"] = DCA_number
+    return
+  print ("Unknown group clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
+  return
+
+def group_end():
+  current_group = ""
   return
 
 # An actor in the performance
@@ -831,10 +900,14 @@ for line in infile:
 # This line has the form keyword = value
     keyword = matchc.groupdict () ['keyword']
     value = matchc.groupdict() ['value']
+    if (do_trace == 1):
+      tracefile.write ("Executing keyword " + keyword +
+                       " with value " + value + ".\n")
     try:
       exec (current_code + "_keyword_value (keyword, value)")
     except NameError:
-      print ("Command " + line.strip() + " not valid in a " + current_code)
+      print ("Command " + line.strip() + " not valid in a " +
+             current_code + ".")
       error_counter = error_counter + 1
     continue
   print ("Unrecognized line: " + line.strip())
@@ -1391,7 +1464,8 @@ def quote_for_tex (text):
   fixed_text_1 = text.replace ("#", "\\#")
   fixed_text_2 = fixed_text_1.replace ("&", "\\&")
   fixed_text_3 = fixed_text_2.replace (". ", ".~")
-  return fixed_text_3
+  fixed_text_4 = fixed_text_3.replace ("_", "\\_")
+  return fixed_text_4
 
 def quote_for_X32TC (text):
   fixed_text_1 = text.replace ("'", "''")
@@ -1474,7 +1548,7 @@ for page_number in page_list:
                 listfile.write ("\\subsubsection{Actors}\n")
               else:
                 listfile.write ("\\subsubsection{Actors in group " +
-                              the_group + "}\n")
+                              quote_for_tex(the_group) + "}\n")
               listfile.write ("\\begin{enumerate}\n")
             listfile.write ("\\item " +
                             quote_for_tex(actor_expanded_name (the_actor)))
@@ -2548,7 +2622,7 @@ for this_page in page_list:
 #                 dca08Channels.  Each is a list of profile IDs
 #                 to place in the DCA on this cue.
 #                 The next eight columns are dca01Label through dcl08Label.
-#                 These labels are placed on the DCA' scribble strip.
+#                 These labels are placed on the DCA's scribble strip.
 #                 Null means no label.
 #                 The next three columns are channelPositions, channelProfiles
 #                 and fxMutes.  ChannelPositions is a list of channel number
@@ -2852,10 +2926,39 @@ if (DCA_style == "nosolo"):
       if (group_name == profile_name):
         matching_group_found = 1
     if (matching_group_found == 0):
+      if (do_trace == 1):
+        tracefile.write ("Creating a group for profile " + profile_name + ".\n")
       group_dict = dict()
       group_dict["number"] = group_number
       group_dict["name"] = profile_name
       group_number = group_number + 1
+      based_on_list = profile["based_on"]
+      if (do_trace == 1):
+        tracefile.write ("Based on list: ")
+        pprint.pprint (based_on_list, tracefile)
+      for based_on in based_on_list:
+        if (do_trace == 1):
+          tracefile.write ("Based on: ")
+          pprint.pprint (based_on, tracefile)
+        based_on_profile_name = based_on[0]
+        the_page = based_on[1]
+        the_microphone = based_on[2]
+        group_name = based_on[3]
+        based_on_characters = based_on[4]
+        for character_name in based_on_characters:
+          character_dict = characters[character_name]
+          if ("preferred_DCA" in character_dict):
+            if ("preferred_DCA" in profile):
+              if (character_dict["preferred_DCA"] != profile["preferred_DCA"]):
+                print ("Profile " + profile_name + " is based on characters " +
+                       " with conflicting preferred_DCA.")
+                error_counter = error_counter + 1
+            profile["preferred_DCA"] = character_dict ["preferred_DCA"]
+            if (do_trace == 1):
+              tracefile.write ("Profile " + profile_name +
+                               " gets preferred DCA from character " +
+                               character_name + ".\n")
+            group_dict["preferred_DCA"] = character_dict ["preferred_DCA"]
       groups[profile_name] = group_dict
       if (do_trace == 1):
         tracefile.write ("Adding group " + profile_name + ".\n")
@@ -2914,6 +3017,8 @@ if (do_trace == 1):
 # Otherwise, prefer the previously used DCA, if it isn't being used.
 # If it is, find the least-occupied unused DCA.  If there is no DCA
 # that is unused for this page, share the one that is least used.
+# If a group prefers a particular DCA, use it if it is available.
+
 def find_good_DCA (this_group, this_page):
   if (do_trace == 1):
     tracefile.write ("Finding a good DCA for group " + this_group["name"] +
@@ -2928,6 +3033,13 @@ def find_good_DCA (this_group, this_page):
     DCA_pages = this_DCA["pages"]
     if (this_page not in DCA_pages):
       # The previously-used DCA has this page empty.  Use it.
+      return (this_DCA)
+  if ("preferred_DCA" in this_group):
+    preferred_DCA = this_group["preferred_DCA"]
+    this_DCA = DCAs[preferred_DCA]
+    DCA_pages = this_DCA["pages"]
+    if (this_page not in DCA_pages):
+      # The preferred DCA has this page empty.  Use it.
       return (this_DCA)
   best_DCA_size = -1
   DCA_found = 0
@@ -2953,6 +3065,11 @@ def find_good_DCA (this_group, this_page):
   # No DCA was found with an empty slot.  We must share.
   if (do_trace == 1):
     tracefile.write ("We must share a DCA.\n")
+  if ("preferred_DCA" in this_group):
+    preferred_DCA = this_group["preferred_DCA"]
+    this_DCA = DCAs[preferred_DCA]
+    # Since all DCAs are occupied, use the preferred DCA.
+    return (this_DCA)
   best_DCA_size = -1
   DCA_found = 0
   for DCA_number in DCAs:
@@ -2978,7 +3095,10 @@ def find_good_DCA (this_group, this_page):
 
 # Assign groups to DCAs.  The groups are processed in the order
 # they were encountered.  In nosolo mode, this processes the characters
-# after the groups, in the order they were listed.
+# after the groups, in the order they were listed.  To try to get
+# characters and groups into their preferred DCAs, we assign groups
+# with preferred DCAs before those without.
+
 group_list = dict()
 for group_name in groups:
   group_dict = groups[group_name]
@@ -2988,8 +3108,8 @@ for group_name in groups:
 if (do_trace == 1):
   tracefile.write ("Group list:\n")
   pprint.pprint (group_list, tracefile)
-  
-for group_number in group_list:
+
+def assign_DCA (group_number):
   this_group = group_list[group_number]
   group_name = this_group["name"]
   for this_page in page_list:
@@ -3019,9 +3139,26 @@ for group_number in group_list:
       the_names = the_DCA_page["names"]
       if (group_name not in the_names):
         the_DCA_page["names"] = the_names + [group_name]
+  return
+
+# Assign groups to their preferred DCAs, if possible.
+for group_number in group_list:
+  group_dict = group_list[group_number]
+  if ("preferred_DCA" in group_dict):
+    assign_DCA (group_number)
 
 if (do_trace == 1):
   tracefile.write ("DCAs 2:\n")
+  pprint.pprint (DCAs, tracefile)  
+
+# Assign groups without preferred DCAs.
+for group_number in group_list:
+  group_dict = group_list[group_number]
+  if ("preferred_DCA" not in group_dict):
+    assign_DCA (group_number)
+
+if (do_trace == 1):
+  tracefile.write ("DCAs 3:\n")
   pprint.pprint (DCAs, tracefile)  
 
 if (do_trace == 1):
@@ -3096,7 +3233,7 @@ for the_page in page_list:
     give_DCA_name (DCA_number, the_page)
   
 if (do_trace == 1):
-  tracefile.write ("DCAs 3:\n")
+  tracefile.write ("DCAs 4:\n")
   pprint.pprint (DCAs, tracefile)  
 
 # Tell X32 Theatre Control which profiles to unmute in each page,
@@ -3330,8 +3467,8 @@ for this_page in page_list:
                          " on microphone " + str(this_microphone))
         group = microphone_group [(this_page, this_microphone)]
         if (group != ""):
-          listfile1.write (" (" + group + ")")
-          listfile2.write (" in group " + group)
+          listfile1.write (" (" + quote_for_tex(group) + ")")
+          listfile2.write (" in group " + quote_for_tex(group))
         the_DCA, the_name = find_DCA (this_microphone, this_page)
         if (the_DCA != None):
           listfile2.write (" using DCA " + str(the_DCA["number"]) +
@@ -3369,14 +3506,14 @@ for this_page in page_list:
           if (prev_group != ""):
             listfile1.write (str(this_microphone) +
                             " moves from " +
-                            prev_group +
-                            " to " + group)
+                            quote_for_tex(prev_group) +
+                            " to " + quote_for_tex(group))
             listfile2.write ("Character " +
                              find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
                              " moves from group " +
-                             prev_group +
+                             quote_for_tex(prev_group) +
                              " to group " + quote_for_tex(group))
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
@@ -3384,7 +3521,7 @@ for this_page in page_list:
                                " named " + quote_for_tex(the_name))
           else:
             listfile1.write (str(this_microphone) +
-                            " moves to " + group)
+                            " moves to " + quote_for_tex(group))
             listfile2.write ("Character " +
                              find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
@@ -3396,7 +3533,7 @@ for this_page in page_list:
                                " named " + quote_for_tex(the_name))
         else:
           listfile1.write (str(this_microphone) +
-                          " leaves " + prev_group)
+                          " leaves " + quote_for_tex(prev_group))
           listfile2.write ("Character " +
                            find_profile_tex(this_microphone, this_page) +
                            " on microphone " +
