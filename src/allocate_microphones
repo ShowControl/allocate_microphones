@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.2 2019-06-01',
+                     version='allocate_microphones 3.3 2019-06-02',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -163,7 +163,7 @@ def DCA_start(value):
   try:
     DCA_count = int(value)
   except ValueError:
-    print ("Number of DCAs must be an integer, not " + value)
+    print ("Number of DCAs must be an integer, not " + value + ".")
     error_counter = error_counter + 1
     return
   DCA_count_specified = 1
@@ -176,9 +176,9 @@ def DCA_keyword_value (keyword, value):
     if (value == "nosolo" or value == "solo"):
       DCA_style = value
     else:
-      print ("Unknown DCA style clause; must be solo or nosolo, not " + value)
+      print ("Unknown DCA style clause; must be solo or nosolo, not " +
+             value + ".")
       error_counter = error_counter + 1
-      current_character ["group"] = value
     return
   print ("Unknown DCA clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -219,13 +219,18 @@ def character_keyword_value (keyword, value):
              "group names must be different from character names.")
       error_counter = error_counter + 1
       return
-    current_character ["group"] = value
-    if (value not in groups):
+    group_name = value
+    # In solo style, group "" means the solo group.  In nosolo style,
+    # group "" means the group with the same name as the character.
+    if ((DCA_style == "nosolo") and (group_name == "")):
+      group_name = current_character["name"]
+    current_character ["group"] = group_name
+    if (group_name not in groups):
       group_dict = dict()
       group_dict["number"] = group_number
-      group_dict["name"] = value
+      group_dict["name"] = group_name
       group_number = group_number + 1
-      groups[value] = group_dict
+      groups[group_name] = group_dict
     return
   if (keyword == "preferred_DCA"):
     if (do_trace == 1):
@@ -505,6 +510,56 @@ def make_pageno (value):
       "Return 3: " + value + "-0000-0000" + "\n")
   return value + "-0000-0000"
 
+# Reverse the above process.
+# Page numbers are stored internally in a sortable format, consisting of
+# a 4-digit number, a separator, a second 4-digit number, another separator
+# and a third 4-digit number.  Format that into something nice to see.
+# Note that if a number is all zeros it has probably been synthesized,
+# so omit it.
+
+def format_pageno (the_pageno):
+  match_digits = re.match (
+    "^(?P<lead_digits>[0-9]+)(?P<sep1>[^0-9]+)(?P<mid_digits>[0-9]+)" +
+    "(?P<sep2>[^0-9]+)(?P<trail_digits>[0-9]+)$", the_pageno)
+  if (match_digits):
+    lead_digits = match_digits.groupdict() ["lead_digits"]
+    sep1 = match_digits.groupdict() ["sep1"]
+    mid_digits = match_digits.groupdict() ["mid_digits"]
+    sep2 = match_digits.groupdict() ["sep2"]
+    trail_digits = match_digits.groupdict() ["trail_digits"]
+    if (do_trace == 1):
+      tracefile.write ("Formatting " + the_pageno + ".\n")
+      tracefile.write ("lead: " + lead_digits + ".\n")
+      tracefile.write ("sep1: " + sep1 + ".\n")
+      tracefile.write ("mid: " + mid_digits + ".\n")
+      tracefile.write ("sep2: " + sep2 + ".\n")
+      tracefile.write ("trail: " + trail_digits + ".\n")
+    if ((mid_digits == "0000") and (sep2 == "-")):
+      if ((trail_digits == "0000") and (sep1 == "-")):
+        if (do_trace == 1):
+          tracefile.write ("Return 1: " + str(int(lead_digits)) + "\n");
+        return str(int(lead_digits))
+      if (trail_digits == "0000"):
+        if (do_trace == 1):
+          tracefile.write ("Return 2: " + str(int(lead_digits)) + sep1 + "\n")
+        return (str(int(lead_digits)) + sep1)
+      if (sep2 == "-"):
+        if (do_trace == 1):
+          tracefile.write ("Return 6: " + str(int(lead_digits)) + sep1 +
+                           str(int(trail_digits)) + "\n.")
+        return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
+      if (do_trace == 1):
+            tracefile.write ("Return 3: " + str(int(lead_digits)) + sep1 +
+                             sep2 + str(int(trail_digits)) + "\n")
+      return (str(int(lead_digits)) + sep1 + sep2 + str(int(trail_digits)))
+    if (do_trace == 1):
+      tracefile.write ("Return 4: " +
+                       str(int(lead_digits)) + sep1 +
+                       str(int(mid_digits)) + sep2 +
+                       str(int(trail_digits)) + "\n")
+    return (str(int(lead_digits)) + sep1 + str(int(mid_digits)) + sep2 +
+            str(int(trail_digits)))
+
 current_page = "0000"
 #
 # The pages dictionary has an entry for each page.
@@ -514,8 +569,11 @@ current_page = "0000"
 # of characters.
 # "enter", "speaks" and "speaking" are lists of
 # [character, speaks, group],
-# where speaks is a code: 0 means does not speak,
-# 3 means speaks until quieted, ....
+# where speaks is a code: 0 means does not speak
+# and does not need a microphone.  1 means does not
+# speak but needs a microphone because he speaks
+# during this entrance.  2 means speaking on this
+# page.  3 means speaks until quieted.
 # 
 # "intermission" and "end" are empty lists.
 # "songs" is a list of song information for the
@@ -531,6 +589,8 @@ current_page = "0000"
 # for this page, coded the same as songs.
 # "duration" is the time this page takes to perform,
 # in seconds.
+# "prompt" is the text to display so the mixer operator
+# will know when this page starts.
 #
 
 # Start a page, or a part of a page
@@ -542,10 +602,27 @@ def page_start (value):
   previous_page = current_page
   current_page = make_pageno(value)
   if (current_page <= previous_page):
-    print ("Pages must be described in order: " + value)
+    print ("Pages must be described in order: " +
+           format_pageno(current_page) + " is earlier than " +
+           format_pageno(previous_page) + ".")
     error_counter = error_counter + 1
   if (current_page not in pages):
     pages [current_page] = {}
+  return
+
+def page_keyword_value (keyword, value):
+  global error_counter
+  the_page = pages[current_page]
+  if (keyword == "prompt"):
+    if ("prompt" in the_page):
+      print ("More than one prompt for page " + format_pageno(current_page) +
+             ".")
+      error_counter = error_counter + 1
+      return
+    the_page["prompt"] = value
+    return
+  print ("Unknown page clause: " + keyword + "=" + value)
+  error_counter = error_counter + 1
   return
 
 def page_end ():
@@ -704,15 +781,21 @@ def enter_keyword_value (keyword, value):
   if ((keyword == "speaks") and (value == "no")):
     current_character_record [1] = 0
     return
+  group_name = value
   if (keyword == "group"):
-    current_character_record [2] = value
-    character_current_group [character_name] = value
-    if (value not in groups):
+    if ((DCA_style == "nosolo") and (group_name == "")):
+      group_name = character_name
+    current_character_record [2] = group_name
+    character_current_group [character_name] = group_name
+    if (group_name not in groups):
+      if (do_trace == 1):
+        tracefile.write ("Creating new group " + group_name +
+                         " for character " + character_name + ".\n")
       group_dict = dict()
       group_dict["number"] = group_number
-      group_dict["name"] = value
+      group_dict["name"] = group_name
       group_number = group_number + 1
-      groups[value] = group_dict
+      groups[group_name] = group_dict
     return
   print ("Unknown enter clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -725,7 +808,16 @@ def enter_end ():
 # the character speaks during this page, or part of a page
 def speak_start (character_name):
   global current_character_record
+  global error_counter
+  if (character_name not in characters):
+    print ("Character " + character_name + " is unknown.")
+    error_counter = error_counter + 1
+    return
   the_character = characters [character_name]
+  if (character_name not in character_current_group):
+    print ("Character " + character_name + " is not on stage to speak.")
+    error_counter = error_counter + 1
+    return
   group = character_current_group [character_name]
   character_record = [the_character, -1, group]
   this_page = pages [current_page]
@@ -747,14 +839,17 @@ def speak_keyword_value (keyword, value):
     character_record = current_character_record
     the_character = character_record [0]
     character_name = the_character ["name"]
-    current_character_record [2] = value
-    character_current_group [character_name] = value
-    if (value not in groups):
+    group_name = value
+    if ((DCA_style == "nosolo") and (group_name == "")):
+      group_name = character_name
+    current_character_record [2] = group_name
+    character_current_group [character_name] = group_name
+    if (group_name not in groups):
       group_dict = dict()
       group_dict["number"] = group_number
-      group_dict["name"] = value
+      group_dict["name"] = group_name
       group_number = group_number + 1
-      groups[value] = group_dict
+      groups[group_name] = group_dict
     return
   print ("Unknown speak caluse: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -789,14 +884,17 @@ def speaking_keyword_value (keyword, value):
     character_record = current_character_record
     the_character = current_character_record [0]
     character_name = the_character ["name"]
-    current_character_record [2] = value
-    character_current_group [character_name] = value
-    if (value not in groups):
+    group_name = value
+    if ((DCA_style == "nosolo") and (value == "")):
+      group_name = character_name
+    current_character_record [2] = group_name
+    character_current_group [character_name] = group_name
+    if (group_name not in groups):
       group_dict = dict()
       group_dict["number"] = group_number
-      group_dict["name"] = value
+      group_dict["name"] = group_name
       group_number = group_number + 1
-      groups[value] = group_dict
+      groups[group_name] = group_dict
     return
   print ("Unknown speaking clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -822,12 +920,17 @@ def quiet_end ():
 # The character leaves the stage, or stops speaking off-stage.
 def exit_start (value):
   global character_current_group
+  global error_counter
   this_page = pages [current_page]
   if ("exit" not in this_page):
     this_page ["exit"] = []
   the_exit_list = this_page ["exit"]
   the_character = characters [value]
   the_exit_list.append (the_character)
+  if (value not in character_current_group):
+    print ("Character " + value + " is not on stage so cannot exit.")
+    error_counter = error_counter + 1
+    return
   del character_current_group [value]
   return
 
@@ -920,55 +1023,6 @@ infile.close()
 page_list = list(pages)
 page_list.sort()
 
-# Page numbers are stored internally in a sortable format, consisting of
-# a 4-digit number, a separator, a second 4-digit number, another separator
-# and a third 4-digit number.  Format that into something nice to see.
-# Note that if a number is all zeros it has probably been synthesized,
-# so omit it.
-
-def format_pageno (the_pageno):
-  match_digits = re.match (
-    "^(?P<lead_digits>[0-9]+)(?P<sep1>[^0-9]+)(?P<mid_digits>[0-9]+)" +
-    "(?P<sep2>[^0-9]+)(?P<trail_digits>[0-9]+)$", the_pageno)
-  if (match_digits):
-    lead_digits = match_digits.groupdict() ["lead_digits"]
-    sep1 = match_digits.groupdict() ["sep1"]
-    mid_digits = match_digits.groupdict() ["mid_digits"]
-    sep2 = match_digits.groupdict() ["sep2"]
-    trail_digits = match_digits.groupdict() ["trail_digits"]
-    if (do_trace == 1):
-      tracefile.write ("Formatting " + the_pageno + ".\n")
-      tracefile.write ("lead: " + lead_digits + ".\n")
-      tracefile.write ("sep1: " + sep1 + ".\n")
-      tracefile.write ("mid: " + mid_digits + ".\n")
-      tracefile.write ("sep2: " + sep2 + ".\n")
-      tracefile.write ("trail: " + trail_digits + ".\n")
-    if ((mid_digits == "0000") and (sep2 == "-")):
-      if ((trail_digits == "0000") and (sep1 == "-")):
-        if (do_trace == 1):
-          tracefile.write ("Return 1: " + str(int(lead_digits)) + "\n");
-        return str(int(lead_digits))
-      if (trail_digits == "0000"):
-        if (do_trace == 1):
-          tracefile.write ("Return 2: " + str(int(lead_digits)) + sep1 + "\n")
-        return (str(int(lead_digits)) + sep1)
-      if (sep2 == "-"):
-        if (do_trace == 1):
-          tracefile.write ("Return 6: " + str(int(lead_digits)) + sep1 +
-                           str(int(trail_digits)) + "\n.")
-        return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
-      if (do_trace == 1):
-            tracefile.write ("Return 3: " + str(int(lead_digits)) + sep1 +
-                             sep2 + str(int(trail_digits)) + "\n")
-      return (str(int(lead_digits)) + sep1 + sep2 + str(int(trail_digits)))
-    if (do_trace == 1):
-      tracefile.write ("Return 4: " +
-                       str(int(lead_digits)) + sep1 +
-                       str(int(mid_digits)) + sep2 +
-                       str(int(trail_digits)) + "\n")
-    return (str(int(lead_digits)) + sep1 + str(int(mid_digits)) + sep2 +
-            str(int(trail_digits)))
-
 if (do_trace):
   tracefile.write ("pages:" + "\n")
   pprint.pprint (page_list, tracefile)
@@ -1014,6 +1068,8 @@ for page_number in page_list:
       if ("duration" in new_activity):
         if (new_activity ["duration"] == 0):
           append_record = 0
+      if (new_activity["type"] == "prompt"):
+        append_record = 0
       if (append_record == 1):
         new_activities_list.append(new_activity)
     activities [page_number] = new_activities_list
@@ -1134,7 +1190,11 @@ for page_number in page_list:
         duration_activity ["value"] = duration_value
       else:
         activities [page_number].append(duration_activity)
-    
+
+  if ("prompt" in this_page):
+    prompt_activity = dict (type = "prompt", text = this_page["prompt"])
+    activities [page_number].append(prompt_activity)
+      
   prev_page = page_number
   
 if (do_trace == 1):
@@ -1508,6 +1568,7 @@ for page_number in page_list:
   scene_name = ""
   start_time = ""
   duration = ""
+  prompt = ""
   activity_list = activities [page_number]
   for activity_item in activity_list:
     type = activity_item ["type"]
@@ -1519,13 +1580,18 @@ for page_number in page_list:
       start_time = int(activity_item ["value"])
     elif (type == "duration"):
       duration = int(activity_item ["value"])
+    elif (type == "prompt"):
+      prompt = activity_item["text"]
+      
   listfile.write ("\\subsection{" + str(cue_number).zfill(3) +
-                  ": Act " + act_name +
-                  " Scene " + scene_name +
+                  ": Act " + quote_for_tex(act_name) +
+                  " Scene " + quote_for_tex(scene_name) +
                   " Page ")
-  listfile.write (format_pageno(page_number))
+  listfile.write (quote_for_tex(format_pageno(page_number)))
   listfile.write (" Start time " + seconds_to_hhmmss(start_time))
   listfile.write (" Duration " + seconds_to_hhmmss(duration))
+  if (prompt != ""):
+    listfile.write (" Prompt " + quote_for_tex(prompt))
   listfile.write ("}\n")
 #
 # Write actor, song and sound information for this cue.
@@ -2740,11 +2806,7 @@ profile_list = list()
 # The character name may be a composite if an actor plays more than
 # one character at a time.
 #
-# We build up the profile_list in stages.  First, create a profile for
-# each character or composite character in the character log.
-#
-
-# Augment the profiles from the character log.
+# If a character changes microphones we will need a profile for each microphone.
 profile_list_additional = list()
 
 if (do_trace == 1):
@@ -3017,7 +3079,8 @@ if (do_trace == 1):
 # Otherwise, prefer the previously used DCA, if it isn't being used.
 # If it is, find the least-occupied unused DCA.  If there is no DCA
 # that is unused for this page, share the one that is least used.
-# If a group prefers a particular DCA, use it if it is available.
+# If a group prefers a particular DCA, use it if it is available,
+# and even if it is not, if no DCA is unused.
 
 def find_good_DCA (this_group, this_page):
   if (do_trace == 1):
@@ -3041,6 +3104,9 @@ def find_good_DCA (this_group, this_page):
     if (this_page not in DCA_pages):
       # The preferred DCA has this page empty.  Use it.
       return (this_DCA)
+  # We must choose a DCA.  Of the DCAs with this page unused, pick the one
+  # that has the least pages used, thus spreading the profiles among the
+  # DCAs.
   best_DCA_size = -1
   DCA_found = 0
   for DCA_number in DCAs:
@@ -3053,8 +3119,6 @@ def find_good_DCA (this_group, this_page):
         continue
     DCA_pages = this_DCA["pages"]
     DCA_size = len(this_DCA["pages"])
-    if (DCA_number == old_DCA_number):
-      DCA_size = DCA_size / 2
     if (this_page not in DCA_pages):
       if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
         best_DCA_size = DCA_size
@@ -3062,7 +3126,10 @@ def find_good_DCA (this_group, this_page):
         DCA_found = 1
   if (DCA_found == 1):
     return (best_DCA)
-  # No DCA was found with an empty slot.  We must share.
+  # No DCA was found with this page unused.  We must share.  Use the
+  # preferred DCA if one is specified, otherwise the last DCA used.
+  # If there is no last DCA, choose the one that has the least pages
+  # used.
   if (do_trace == 1):
     tracefile.write ("We must share a DCA.\n")
   if ("preferred_DCA" in this_group):
@@ -3070,14 +3137,15 @@ def find_good_DCA (this_group, this_page):
     this_DCA = DCAs[preferred_DCA]
     # Since all DCAs are occupied, use the preferred DCA.
     return (this_DCA)
+  if (old_DCA_number != -1):
+    this_DCA = DCAs[old_DCA_number]
+    return (this_DCA)
   best_DCA_size = -1
   DCA_found = 0
   for DCA_number in DCAs:
     this_DCA = DCAs[DCA_number]
     DCA_pages = this_DCA["pages"]
     DCA_size = len(this_DCA["pages"])
-    if (DCA_number == old_DCA_number):
-      DCA_size = DCA_size / 2
     if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
       if (do_trace == 1):
         tracefile.write ("Nominating DCA " + str(DCA_number) + ".\n")
@@ -3244,8 +3312,15 @@ if (do_trace == 1):
 # for number, profiles and name.
 cue_number = 1;
 for this_page in page_list:
-  listfile.write ("INSERT INTO cues VALUES (" + str(cue_number) + ",0, " +
-                  "'" + format_pageno (this_page) + "', ")
+  listfile.write ("INSERT INTO cues VALUES (")
+  listfile.write (str(cue_number))
+  listfile.write (",0, " + '"')
+  page_dict = pages[this_page]
+  prompt = format_pageno (this_page)
+  if ("prompt" in page_dict):
+    prompt = page_dict["prompt"]
+  listfile.write (prompt)
+  listfile.write ('", ')
   DCA_info = dict()
   for DCA_number in DCAs:
     this_DCA = DCAs[DCA_number]
@@ -3425,6 +3500,14 @@ listfile2.write ("\\begin{description}\n")
 prev_microphone_list = []
 prev_page = ""
 for this_page in page_list:
+  this_page_dict = pages[this_page]
+  if (do_trace == 1):
+    tracefile.write ("Microphone switching instructions for page " +
+                     format_pageno(this_page) + ":\n")
+    pprint.pprint (this_page_dict, tracefile)
+  prompt = ""
+  if ("prompt" in this_page_dict):
+    prompt = this_page_dict["prompt"]
   if (this_page in microphone_switching_log):
     microphone_list = microphone_switching_log [this_page]
   else:
@@ -3447,10 +3530,19 @@ for this_page in page_list:
       (len(turn_off_list) > 0) or
       (len(change_group_list) > 0)):
     microphone_cue_count = microphone_cue_count + 1
-    listfile1.write ("\\vskip 0.25in \\vbox {\\parbox[t]{0.5in}{" +
-                    format_pageno(this_page) + "\\hfil}" + 
-                    "\\parbox[t]{2in}{" )
-    listfile2.write ("\\item[" + format_pageno(this_page) + "]\n")
+    listfile1.write ("\\vskip 0.25in ")
+    if (prompt != ""):
+      listfile1.write ("\\vbox {\\parbox[t]{2.5in}{{\\em " +
+                       quote_for_tex(prompt) + "} ")
+    else:
+      listfile1.write ("\\vbox {\\parbox[t]{0.5in}{" +
+                       quote_for_tex(format_pageno(this_page)) + "\\hfil}")
+      listfile1.write ("\\parbox[t]{2in}{" )
+    if (prompt != ""):
+      listfile2.write ("\\item[" + quote_for_tex(prompt) + "]\n")
+    else:
+      listfile2.write ("\\item[" +
+                       quote_for_tex(format_pageno(this_page)) + "]\n")
     if (len(turn_on_list) > 0):
       listfile1.write ("On: " )
       listfile2.write ("Switch on ")
@@ -3561,11 +3653,12 @@ for this_page in page_list:
           listfile2.write ("Note that character " +
                            find_profile_tex (microphone_list[0], this_page) +
                            " on microphone " + str(microphone_list[0]) +
-                           " is still on,")
+                           " is still on")
           the_DCA, the_name = find_DCA (microphone_list[0], this_page)
           if (the_DCA != None):
-            listfile2.write (" using DCA " + str(the_DCA["number"]) +
+            listfile2.write (", using DCA " + str(the_DCA["number"]) +
                              " named " + quote_for_tex(the_name))
+          listfile2.write (".")
 
         else:
           listfile1.write ("(Still on: ")
@@ -3579,8 +3672,7 @@ for this_page in page_list:
               first_microphone = 0
             listfile1.write (str(this_microphone))
             listfile2.write (find_profile_tex(this_microphone, this_page) +
-                             " on microphone " +
-                             str(this_microphone))
+                             " on microphone " + str(this_microphone))
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
               listfile2.write (" using DCA " + str(the_DCA["number"]) +

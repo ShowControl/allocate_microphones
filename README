@@ -386,6 +386,7 @@ character=<name>	// Name of a character being played.
 // a letter or - followed by a number or by two numbers separated by
 // a dash or other non-numeric separator to divide a page into parts.  
 [page <pageno>]	// The following material pertains to page pageno
+prompt=<text>	// The line or action that triggers the cue (page).
 //
 // The following timeline events happen on the most recent page
 // specified.
