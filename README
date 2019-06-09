@@ -186,6 +186,11 @@ between groups.
 in an expanded form, with character names.  If you have a mixer
 board with a sequencer, this list is intended for the person
 who programs the sequencer.
+
+.parameters.tex
+	Contains the show name and whatever was specified after
+	[show], particularly the Venue and Designer.  This information
+	can be used in the microphones template file.
 	
 .stage_manager_after_show.tex
 .stage_manager_at_intermission.tex
@@ -358,8 +363,10 @@ and make sure they print correctly.
 Here is the full syntax of the play description file:
 
 [show <showname>] // The name of the show
-venue=<venuename> // Where the show is performed
-designer=<designername> // The name of the person who created this file
+Venue=<venuename> // Where the show is performed
+Designer=<designername> // The name of the person who created this file
+		  // other keywords and values are permitted, and are included
+		  // in the parameters.tex file.
 [microphones <number>]	// the number of microphones available in the theatre
 	// if omitted or zero, the program uses the minimum number needed for
 	// the show.

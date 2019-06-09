@@ -1,33 +1,38 @@
 // The Music Man, John Sauter, April 12, 2011
-// Updated for X32 Theatre Control Support June 1, 2019.
+// Updated for X32 Theatre Control Support June 2, 2019.
 
 [show The Music Man]
-[microphones 24]
+Venue=Manchester Community Theater
+Designer=John Sauter
+DateNumeric=2019-06-09
+DateText=June 9, 2019
+
+[microphones 32]
 [DCA 8]
 style=nosolo
 
 [character Harold]
 preferred_DCA=0
+[character Marian]
+preferred_DCA=1
+[character Jacey]
+group=Quartet
+[character Ewart]
+group=Quartet
+[character Oliver]
+group=Quartet
+[character Olin]
+group=Quartet
 [character Charlie Cowell]
 [character Mayor Shinn]
 [character Eulalie]
 [character Alma]
 [character Ethel]
-[character Jacey]
-group=Quartet
 [character Marcellus]
-[character Ewart]
-group=Quartet
-[character Marian]
-preferred_DCA=1
 [character Amaryllis]
 [character Winthrop]
 [character Tommy]
 [character Zaneeta]
-[character Oliver]
-group=Quartet
-[character Olin]
-group=Quartet
 [character Mrs. Paroo]
 [character Maud]
 [character Mrs. Squires]
@@ -112,10 +117,14 @@ group=Women
 [character Woman #2 page 114]
 group=Women
 [character Man #1 page 115]
-group=Women
+group=Men
+[character Man #2 page 115]
+group=Men
 [character Woman page 115]
 group=Women
 [character Driver]
+[character Stranger]
+preferred_DCA=0
 
 [group Quartet]
 preferred_DCA=2
@@ -133,19 +142,12 @@ microphone=5
 [actor Steve Hammes]
 microphone=6
 [actor Michelle Emmond]
-microphone=22
 [actor Vick Bennison]
-microphone=7
 [actor Meg Petersen]
-microphone=8
 [actor Paula Troie]
-microphone=9
 [actor Jenn Fichera]
-microphone=10
 [actor Jenn Stover]
-microphone=11
 [actor Karen Hammes]
-microphone=12
 [actor Mark Sousa]
 [actor Ben Wesenberg]
 [actor Tom Partridge]
@@ -183,6 +185,7 @@ microphone=12
 [role]
 actor=Stuart Harmon
 character=Harold
+character=Stranger
 [role]
 actor=Ashley Hughes
 character=Marian
@@ -234,9 +237,11 @@ character=Mayor Shinn
 [role]
 actor=Dave Ostrowski
 character=Newspaper Reader #2
+character=Newspaper Reader #4
 [role]
 actor=Kevin Linkroum
 character=Newspaper Reader #3
+character=Newspaper Reader #5
 [role]
 actor=Mark Sousa
 character=Marcellus
@@ -296,6 +301,7 @@ character=Woman #1 page 114
 actor=Kevin Brannelly
 character=4th voice page 68
 character=Man #2 page 114
+character=Man #2 page 115
 [role]
 actor=Robyn Holley
 character=5th voice page 68
@@ -338,6 +344,7 @@ actor=Pat Sawicki
 character=Driver
 
 [page 1]
+prompt=Top of Show
 [act 1]
 [scene 1]
 [enter Conductor]
@@ -356,15 +363,18 @@ character=Driver
 [quiet Newspaper Reader #4]
 [enter Newspaper Reader #5]
 [quiet Newspaper Reader #5]
-[enter Harold]
-[quiet Harold]
+[enter Stranger]
+[quiet Stranger]
 [page 2a]
+prompt=2: ``Boart!  All aboardt!''
 [exit Conductor]
 [page 2b]
+prompt=2: ``your firm give credit?''
 [duration 15]
 [begin song 03 Rock Island]
 [sound 01 train chuffing in time to song]
 [page 2c]
+prompt=2: ``and the fly-paper''
 [begin sound 02 train running on tracks]
 [page 3]
 [duration 30]
@@ -374,12 +384,14 @@ character=Driver
 [duration 30]
 [sound 01 train chuffing in time to song]
 [page 6a]
+prompt=6: ``Hill?''
 [duration 10]
 [speak Newspaper Reader #2]
 [speak Newspaper Reader #3]
 [speak Newspaper Reader #4]
 [speak Newspaper Reader #5]
 [page 6b]
+prompt=6: ``No!''
 [duration 20]
 [sound 03 train whistle]
 [page 7]
@@ -388,20 +400,25 @@ character=Driver
 [duration 30]
 [sound 01 train chuffing in time to song]
 [page 8b]
+prompt=8: ``but he doesn't know the territory!''
 [duration 5]
 [end song 03 Rock Island]
 [end sound 02 train running on tracks]
 [page 8c]
+prompt=8: ``but he doesn't know the territory!''
 [duration 5]
 [enter Conductor]
 [page 8d]
+prompt=8: ``Seegarettes illegal in this state.  Board!''
 [duration 1]
 [exit Conductor]
 [page 10a]
+prompt=10: ``sell them neck-bowed Hawkeyes out here.''
 [enter Conductor]	// speaks from off-stage in script
 [begin sound background daytime outdoors]
-[speak Harold]
+[speak Stranger]
 [page 10b]
+prompt=10: ``I don't believe I caught your name.''
 [exit Conductor]
 [exit Salesman #1]
 [exit Salesman #2]
@@ -414,7 +431,10 @@ character=Driver
 [exit Newspaper Reader #3]
 [exit Newspaper Reader #4]
 [exit Newspaper Reader #5]
+[exit Stranger]
+
 [page 10c]
+prompt=10: immediately following
 [scene 2]
 [begin song 04 Iowa Stubborn]
 [enter Mayor Shinn]
@@ -436,12 +456,14 @@ character=Driver
 [enter Wife page 12]
 [quiet Wife page 12]
 [enter Jacey]
+group=
 [quiet Jacey]
 [enter contrary solo page 11]
 [quiet contrary solo page 11]
 [page 11a]
 [duration 10]
 [page 11b]
+prompt=11: ``you really ought to give Iowa a try,''
 [duration 20]
 [speak contrary solo page 11]
 [speak Boy page 11]
@@ -450,21 +472,26 @@ character=Driver
 [speak Alma]
 [speak Ethel]
 [page 11c]
+prompt=11: ``She wouldn't a' come anyway.''
 [duration 2]
 [page 12a]
 [duration 10]
 [page 12b]
+prompt=12: ``If your crop should happen to die.''
 [duration 5]
 [speak Farmer page 12]
 [speak Wife page 12]
 [page 12c]
+prompt=12: ``Even though we may not ever mention it again.''
 [duration 20]
 [end song 04 Iowa Stubborn]
 [page 12d]
+prompt=12: ``ought to give Iowa a try.''
 [duration 10]
-[speaking Harold]
+[enter Harold]
 [speaking Jacey]
 [page 13]
+prompt=13: ``Who is late as usual.''
 [exit Jacey]
 [exit Mayor Shinn]
 [exit Boy page 11]
@@ -474,11 +501,16 @@ character=Driver
 [exit Farmer page 12]
 [exit Wife page 12]
 [exit contrary solo page 11]
+[exit Mrs. Paroo]
+[exit Amaryllis]
 [enter Marcellus]
 [page 15a]
+prompt=13: ``Music teacher.''
 [exit Marcellus]
 [enter Ewart]
+group=
 [page 15b]
+prompt=15: ``a pool table in your community.''
 [quiet Ewart]
 [begin song 05 Ya Got Trouble]
 [page 17]
@@ -505,21 +537,25 @@ speaks=no
 [duration 15]
 [song 06 Trouble Playoff & Walking Music]
 [page 22b]
+prompt=22: ``The young ones moral after school''
 [duration 5]
 [exit Ewart]
+[enter Marian]
 [page 22c]
 [duration 30]
 [scene 3]
-[enter Marian]
 [page 23a]
+prompt=23: ``Good!''
 [exit Marian]
 [exit Harold]
 [end sound background daytime outdoors]
+
 [page 23b]
+prompt=23: immediately following
 [scene 4]
-[speaking Mrs. Paroo]
+[enter Mrs. Paroo]
 [enter Marian]
-[speaking Amaryllis]
+[enter Amaryllis]
 [begin song 07 Piano Lesson]
 [page 25]
 [duration 30]
@@ -527,8 +563,10 @@ speaks=no
 [duration 30]
 [end song 07 Piano Lesson]
 [page 27]
+prompt=27: ``Yes, dear.''
 [enter Winthrop]
 [page 28]
+prompt=28: ``He's crying.''
 [exit Winthrop]
 [exit Mrs. Paroo]
 [page 30]
@@ -536,13 +574,17 @@ speaks=no
 [page 31a]
 [end song 08 Goodnight, My Someone]
 [page 31b]
+prompt=31: ``Goodnight.''
 [duration 1]
 [exit Marian]
 [exit Amaryllis]
+
 [page 31c]
+prompt=31: Scene five opens
 [duration 15]
 [scene 5]
-[begin sound background rain]	// sounds start in blackout, fade as curtain opens
+[begin sound background rain]	// sounds start in blackout,
+       	     			//fade as curtain opens
 [begin sound background gym interior with rain on roof]
 [enter Eulalie]
 [song 09 Columbia, Gem of the Ocean]
@@ -583,33 +625,42 @@ speaks=no
 [enter Mrs. Squires]
 [quiet Mrs. Squires]
 [page 31d]
+prompt=31: song ends
 [duration 10]
 [speaking Mayor Shinn]
 [exit Jacey]
 [exit Eulalie]
 [page 32a]
+prompt=32: ``Four score ---''
 [sound 04 flap-flap of piano roll]
 [page 32b]
+prompt=32: ``will take a leading part.''
 [enter Eulalie]
 [page 33a]
+prompt=33: ``tuther feather fip''
 [sound 05 firecracker]
 [page 33b]
+prompt=33: ``I'm shot, George; who shot me?''
 [exit Eulalie]
 [speaking Constable Locke]
 [speaking Gracie]
 [speaking Alma]
 [page 33c]
+prompt=33: ``Four store and seven ---''
 [enter Jacey]
 [speaking Ewart]
 [speaking Olin]
 [speaking Oliver]
 [page 34a]
+prompt=34: ``Didn't the gazette predict fair?''
 [sound 06 thunder]	// rain sounds nearly inaudible
 [end sound background rain]
 [end sound background gym interior with rain on roof]
 [page 34b]
+prompt=34: ``Order! Order!''
 [sound 07 train whistle]
 [page 35a]
+prompt=34: ``Four score ---''
 [speaking Harold]
 [quiet Jacey]
 [quiet Ewart]
@@ -622,6 +673,7 @@ speaks=no
 [speak Man #2 page 35]
 [speak Maud]
 [page 35b]
+prompt=35: ``we get this pool table matter settled!''
 [duration 16]
 [begin song 10 Trouble Reprise]
 [quiet Mayor Shinn]
@@ -646,17 +698,22 @@ speaks=no
 [enter Eulalie]
 [quiet Eulalie]
 [page 38d]
+prompt=38: Shinn corners the school board
 [speaking Constable Locke]
 [speaking Tommy]
 [speaking Mayor Shinn]
 [page 39]
+prompt=39: ``Ten o'clock sharp.''
 [exit Mayor Shinn]
 [page 40]
+prompt=40: ``What's your name?''
 [speaking Zaneeta]
 [page 41a]
+prompt=41: ``Ye Gods.''
 [exit Tommy]
 [exit Zaneeta]
 [page 41b]
+prompt=41: ``She's the Mayor's oldest girl.''
 [speaking Jacey]
 [speaking Ewart]
 [speaking Olin]
@@ -672,10 +729,12 @@ speaks=no
 [enter Marian]
 speaks=no
 [page 44c]
+prompt=44: ``mystify...''
 [duration 5]
 [exit Marian]
 [exit Harold]
 [page 44d]
+prompt=44: ``Oh, we're in love.''
 [duration 5]
 [exit Eulalie]
 [exit Alma]
@@ -688,13 +747,16 @@ speaks=no
 [exit Ewart]
 [exit Oliver]
 [exit Olin]
+
 [page 44e]
+prompt=44: Scene six opens
 [begin sound background evening outdoors]
 [scene 6]
 [song 15 Walking Music (Reprise)]
 [enter Harold]
 [enter Marian]
 [page 45]
+prompt=45: ``interesting information about you.''
 [exit Marian]
 [enter Marcellus]
 [page 47]
@@ -704,6 +766,7 @@ speaks=no
 [duration 15]
 [end song 16 The Sadder But Wiser Girl]
 [page 48b]
+prompt=48: ``The sadder but wiser girl for me.''
 [exit Marcellus]
 [enter Alma]
 [enter Maud]
@@ -714,6 +777,7 @@ speaks=no
 [duration 30]
 [begin song 17 Pick-a-Little, Talk-a-Little & Goodnight, Ladies]
 [page 52]
+prompt=52: ``cheep, cheep, cheep, cheep!''
 [duration 30]
 [enter Jacey]
 [enter Ewart]
@@ -723,6 +787,7 @@ speaks=no
 [duration 15]
 [end song 17 Pick-a-Little, Talk-a-Little & Goodnight, Ladies]
 [page 53b]
+prompt=53: ``pick a little, talk a little, cheep!''
 [duration 1]
 [exit Harold]
 [exit Alma]
@@ -735,7 +800,9 @@ speaks=no
 [exit Olin]
 [exit Oliver]
 [end sound background evening outdoors]
+
 [page 53c]
+prompt=53: Scene seven opens
 [scene 7]
 [begin song 18 Marian the Librarian]
 [enter Harold]
@@ -747,6 +814,7 @@ speaks=no
 [page 54a]
 [duration 15]
 [page 54b]
+prompt=54: ``No!''
 [duration 30]
 [quiet Marian]
 [page 55]
@@ -758,78 +826,98 @@ speaks=no
 [duration 120]
 [song 19 Marian --- Dance]
 [page 56c]
+prompt=56: Marian swings on Harold but hits Tommy
 [duration 5]
 [sound 08 slap]
 [page 56d]
+prompt=56: Marian slaps Tommy
 [duration 5]
 [exit Harold]
 [exit Marian]
 [exit Tommy]
 [exit Zaneeta]
+
 [page 57a]
+prompt=57: Scene eight opens
 [scene 8]
 [begin sound background daytime outdoors]
 [song 20 First Seventy-Six Trombones Crossover]
 [enter Harold]
 [enter Tommy]
 [page 57b]
+prompt=57: ``G'bye Professor.''
 [exit Tommy]
 [begin song 21 Second Seventy-Six Trombones Crossover]
 [page 57c]
+prompt=57: Harold rings doorbell
 [scene 9]
 [sound 09 doorbell]
 [page 57d]
+prompt=57: doorbell rings
 [enter Mayor Shinn]
 [end song 21 Second Seventy-Six Trombones Crossover]
 [page 59a]
+prompt=59: ``a Quaker on his day off.''
 [song 22 Third Seventy-Six Trombones Crossover]
 [exit Harold]
 [exit Mayor Shinn]
 [end sound background daytime outdoors]
+
 [page 59b]
+prompt=59: Scene ten opens
 [scene 10]
 [begin sound background evening outdoors]
 [enter Harold]
 [enter Mrs. Paroo]
 [enter Winthrop]
 [page 60]
+prompt=60: ``What do you think of that?''
 [exit Winthrop]
 [page 61]
+prompt=61: ``Hodado, Miss Paroo.''
 [enter Marian]
 [page 62a]
+prompt=62: ``Well Miss Paroo, I hardly ---''
 [exit Marian]
 [page 62b]
+prompt=62: ``good day to ya, Widda Paroo.''
 [exit Harold]
-[page 62c]
 [enter Marian]
 [page 63a]
+prompt=63: ``I know you're there.''
 [enter Winthrop]
 [page 63b]
+prompt=63: ``I've written it all down.''
 [exit Winthrop]
 [page 64]
+prompt=63: ``He does?''
 [duration 30]
 [quiet Mrs. Paroo]
 [song 23 My White Knight]
 [page 65a]
+prompt=64: ```Til I die.''
 [duration 5]
 [exit Marian]
 [exit Mrs. Paroo]
 [end sound background evening outdoors]
+
 [page 65b]
+prompt=65: Scene eleven opens
 [scene 11]
 [begin sound background daytime outdoors]
 [enter Tommy]
 [enter Zaneeta]
 [page 66]
+prompt=66: ``Tommy!  It's Papa!''
 [exit Tommy]
 [quiet Zaneeta]
 [enter Mayor Shinn]
 [enter Eulalie]
 [enter Marian]
 [page 67a]
+prompt=67: ``It's on page...''
 [enter Gracie]
 [begin song 24 The Wells Fargo Wagon]
-[quiet Marian]
 [page 67b]
 [enter 1st voice page 67]
 [quiet 1st voice page 67]
@@ -864,37 +952,39 @@ speaks=no
 [enter Winthrop]
 [quiet Winthrop]
 [page 67c]
+prompt=67: ``The band instruments!''
 [quiet Gracie]
 [quiet Mayor Shinn]
 [quiet Eulalie]
+[quiet Marian]
 [page 67d]
+prompt=67: ``I wish, I wish I knew what it could be.''
 [speaking 1st voice page 67]
 [speaking 2nd voice page 67]
 [speaking 3rd voice page 68]
 [speaking 4th voice page 68]
-[page 67e]
-[quiet 1st voice page 67]
-[page 67f]
-[quiet 2nd voice page 67]
 [page 68a]
+prompt=68: ``and a cross-cut saw.''
+[quiet 1st voice page 67]
+[quiet 2nd voice page 67]
 [quiet 3rd voice page 68]
-[page 68b]
 [quiet 4th voice page 68]
-[page 68c]
+[page 68b]
+prompt=68: ``It is a prepaid surprise or C.O.D.?''
 [speaking 5th voice page 68]
 [speaking 6th voice page 68]
 [speaking 7th voice page 68]
 [speaking 8th voice page 68]
-[page 68d]
+[page 68c]
+prompt=68: ``or a double boiler,''
 [quiet 5th voice page 68]
-[page 68e]
 [quiet 6th voice page 68]
-[page 68f]
 [quiet 7th voice page 68]
-[page 68g]
-[quiet 8th voice page 68]
+[page 68d]
+prompt=68: ``just for me.''
 [quiet 8th voice page 68]
 [page 69a]
+prompt=69: ``I wish I knew what he was comin' for.''
 [duration 10]
 [speaking 9th voice page 69]
 [speaking 10th voice page 69]
@@ -903,38 +993,44 @@ speaks=no
 [speaking Ewart]
 [speaking Olin]
 [speaking Oliver]
-[speaking Winthrop]
 [page 69b]
+prompt=69: ``for the courthouse square.''
+[speaking Winthrop]
 [quiet 9th voice page 69]
-[page 69c]
 [quiet 10th voice page 69]
-[page 69d]
 [quiet 11th voice page 69]
-[page 69e]
 [quiet Jacey]
 [quiet Ewart]
 [quiet Olin]
 [quiet Oliver]
-[page 69f]
+[page 69c]
+prompt=69: ``jutht for me!''
+[page 69d]
 [end song 24 The Wells Fargo Wagon]
-[page 69g]
+[page 69e]
+prompt=69: ``Ray-yy!''
 [enter Driver]
-[page 70a]
+[page 69f]
+prompt=69: ``Whoa!''
 [duration 5]
 [quiet Driver]
 [song 25 Finale Act 1]
-[page 70b]
+[page 70a]
+prompt=70: ``It'th the band insthrumenth!''
 [duration 20]
 [enter Harold]
-[page 70c]
-[quiet Winthrop]
 [speaking Mayor Shinn]
+[page 70b]
+prompt=70: ``O thithter!''
+[quiet Winthrop]
 [speaking Eulalie]
 [page 71a]
+prompt=71: ``About that book ---''
 [duration 20]
 [exit Mayor Shinn]
 [exit Eulalie]
 [page 71b]
+prompt=71: ``Tuesday nights at the High School.''
 [duration 1]
 [exit Harold]
 [exit Marian]
@@ -964,6 +1060,7 @@ speaks=no
 [duration 900]	// 15 minutes
 
 [page 73a]
+prompt=73: Act two scene one opens
 [duration 20]
 [act 2]
 [scene 1]
@@ -988,6 +1085,7 @@ speaks=no
 [enter Olin]
 [quiet Olin]
 [page 73b]
+prompt=73: ``All right, Mr. Dunlop.''
 [duration 10]
 [begin song 28 It's You]
 [speaking Ewart]
@@ -998,6 +1096,7 @@ speaks=no
 [duration 30]
 [end song 28 It's You]
 [page 74b]
+prompt=74: ``Oh, yes, ``it's you''''
 [duration 30]
 [enter Marcellus]
 [enter Boy page 77]
@@ -1009,10 +1108,12 @@ speaks=no
 [quiet Ewart]
 [quiet Oliver]
 [quiet Olin]
-[page 75a]
+[page 74c]
+prompt=74: ``we are entitled to five more minutes.''
 [duration 5]
 [quiet Eulalie]
-[page 75b]
+[page 75a]
+prompt=75: ``Shipoopi!''
 [duration 30]
 [begin song 29 Shipoopi]
 [exit Eulalie]
@@ -1020,6 +1121,7 @@ speaks=no
 [page 76]
 [duration 30]
 [page 77a]
+prompt=77: ``but you can win her yet.''
 [duration 10]
 [end song 29 Shipoopi]
 [quiet Marcellus]
@@ -1029,16 +1131,19 @@ speaks=no
 [enter Harold]
 [quiet Harold]
 [page 77c]
+prompt=77: dancing concludes
 [duration 60]
 [song 31 Shipoopi Dance --- Part 2]
 [speak Boy page 77]
 [page 77d]
+prompt=77: ``show us some new steps!''
 [duration 60]
 [song 32 Shipoopi Dance --- Part 3]
 [exit Alma]	// the script calls for "several" of the ladies to rush off
 [exit Maud]
 [exit Mrs. Squires]
 [page 77e]
+prompt=77: ``Shipoopi!''
 [duration 15]
 [song 33 Shipoopi Playoff]
 [enter Eulalie]
@@ -1052,8 +1157,10 @@ speaks=no
 [speaking Zaneeta]
 [speaking Tommy]
 [page 79a]
+prompt=78: ``Get out, you wild kid.''
 [exit Tommy]
 [page 79b]
+prompt=79: ``My dance ---''
 [exit Eulalie]
 [exit Alma]
 [exit Maud]
@@ -1068,6 +1175,7 @@ speaks=no
 [speaking Marian]
 [speaking Harold]
 [page 80a]
+prompt=80: ``He's slipprier'n a Mississippi sturgeon!''
 [enter Jacey]
 speaks=no
 [enter Ewart]
@@ -1084,6 +1192,7 @@ speaks=no
 [enter Mrs. Squires]
 [quiet Mrs. Squires]
 [page 80b]
+prompt=80: ``a button hook in the well-water.''
 [exit Mayor Shinn]
 [exit Zaneeta]
 [exit Jacey]
@@ -1093,6 +1202,7 @@ speaks=no
 [page 82a]
 [duration 60]
 [page 82b]
+prompt=80: ``Why any night this week ---''
 [duration 30]
 [exit Harold]
 [speaking Ethel]
@@ -1103,11 +1213,13 @@ speaks=no
 [page 83a]
 [duration 15]
 [page 83b]
+prompt=83: ``Rabelais!''
 [duration 15]
 [enter Eulalie]
 [page 84a]
 [end song 34 Pick-a-Little, Talk-a-Little (Reprise)]
 [page 84b]
+prompt=84: (whispered) ``Cheep!''
 [exit Alma]
 [exit Maud]
 [exit Ethel]
@@ -1115,6 +1227,7 @@ speaks=no
 [exit Marian]
 [exit Eulalie]
 [page 84c]
+prompt=84: Scene two opens
 [scene 2]
 [begin sound background evening outdoors]
 [enter Jacey]
@@ -1125,13 +1238,17 @@ speaks=no
 [page 85a]
 [duration 15]
 [begin song 35 Lida Rose & Will I Ever Tell You]
+[page 85b]
+prompt=85: ``I'm home again, rose.''
+[quiet Harold]
 [enter Marcellus]
 speaks=no
-[page 85b]
+[page 85c]
 [duration 15]
 [exit Harold]
 [exit Marcellus]
 [page 86]
+prompt=85: ``Oh, Lida Rose.''
 [duration 30]
 [enter Marian]
 [enter Mrs. Paroo]
@@ -1140,25 +1257,30 @@ speaks=no
 [duration 15]
 [end song 35 Lida Rose & Will I Ever Tell You]
 [page 87b]
+prompt=87: ``Oh, Lida Rose.''
 [duration 5]
 [exit Jacey]
 [exit Ewart]
 [exit Oliver]
 [exit Olin]
 [page 87c]
+prompt=87: Scene three opens
 [duration 15]
 [scene 3]
 [speaking Mrs. Paroo]
-[page 88]
+[page 88a]
+prompt=88: ``there's nothing wrong with a ladylike hint.''
 [enter Winthrop]
-[page 89]
+[page 89a]
 [duration 30]
 [begin song 36 Gary, Indiana]
 [page 90a]
 [end song 36 Gary, Indiana]
 [page 90b]
+prompt=90: ``La de da, La de da.''
 [exit Winthrop]
 [page 90c]
+prompt=90: ``There's time later.''
 [exit Mrs. Paroo]
 [enter Charlie Cowell]
 [sound 14 anvil drops to floor]
@@ -1167,6 +1289,7 @@ speaks=no
 [page 93a]
 [sound 10 train whistle]
 [page 93b]
+prompt=93: ``Try me.''
 [duration 15]
 [sound 11 train whistle, train bell, train approaching]
 [enter Jacey]
@@ -1175,53 +1298,62 @@ speaks=no
 [enter Olin]
 [begin song 37 Lida Rose (Reprise)]
 [page 94a]
+prompt=94: ``Neither one of you's heard the last of me, girly-girl!''
 [exit Charlie Cowell]
-[page 94b]
 [enter Mrs. Paroo]
-[page 94c]
+[enter Harold]
+[page 94b]
+prompt=94: ``Oh, Lida Rose.''
 [end song 37 Lida Rose (Reprise)]
 [exit Jacey]
 [exit Ewart]
 [exit Oliver]
 [exit Olin]
-[enter Harold]
-[page 95]
+[page 95a]
+prompt=95: ``Well, I'll put some on.''
 [exit Mrs. Paroo]
 [page 100a]
+prompt=100: ``Fifteen minutes.''
 [exit Harold]
 [enter Mrs. Paroo]
 [page 100b]
+prompt=100: ``I been using the Think System on you from the Parlor!''
 [exit Marian]
 [exit Mrs. Paroo]
 [page 100c]
 [song 38 Its' You --- Ballet]
-[page 101]
+[page 101a]
+prompt=101: Scene four opens
 [scene 4]
 [begin sound background stream flowing at footbridge]
 [enter Harold]
 [enter Marcellus]
-[page 102]
+[page 102a]
+prompt=102: ``I'll meet you at the Hotel in plenty of time.''
 [exit Marcellus]
 [enter Marian]
-[page 103]
+[page 103a]
 [duration 30]
 [begin song 39 Till There Was You]
 [page 104a]
+prompt=104: ``there's a lot of things you don't know about me ---''
 [duration 10]
 [end song 39 Till There Was You]
 [enter Marcellus]
 [page 104b]
+prompt=104: ``Go get the rig.''
 [exit Marcellus]
 [page 106a]
+prompt=106: ``Why you little ---''
 [duration 10]
-[exit Marian]
 [end sound background stream flowing at footbridge]
 [page 106b]
 [duration 30]
 [scene 5]
-[enter Marian]	// heard offstage
+// Marian is heard offstage.
 [begin song 40 Goodnight, My Someone & Seventy-Six Trombones (Double Reprise)]
 [page 107a]
+prompt=107: ``My someone, goodnight.''
 [duration 15]
 [end song 40 Goodnight, My Someone & Seventy-Six Trombones (Double Reprise)]
 [exit Marian]
@@ -1230,13 +1362,17 @@ speaks=no
 [page 107b]
 [sound 08 smack as Harold hits Charlie Cowell]
 [page 107c]
+prompt=107: ``you never even knew the territory.''
 [exit Charlie Cowell]
 [page 108a]
+prompt=107: ``Come on! Hurry up!''
 [duration 10]
 [begin song 41 Ice Cream Sociable]
 [exit Marcellus]
 [exit Harold]
+
 [page 108b]
+prompt=108: Scene six opens
 [scene 6]
 [enter Eulalie]
 [end song 41 Ice Cream Sociable]
@@ -1247,6 +1383,7 @@ speaks=no
 [enter Mayor Shinn]
 [enter Charlie Cowell]
 [page 109a]
+prompt=109: ``After him!''
 [begin song 42 Chase Music]
 [exit Eulalie]
 [exit Mayor Shinn]
@@ -1256,29 +1393,36 @@ speaks=no
 [exit Man #2 page 109]
 [exit Woman page 109]
 [page 109b]
+prompt=109: Harold enters at end of chase
 [end song 42 Chase Music]
 [enter Harold]
 [enter Marian]
 [page 110a]
+prompt=110: ``Please , hurry, please ---''
 [enter Marcellus]
 [page 110b]
+prompt=110: ``Let's try down my the crick!''
 [exit Marcellus]
 [enter Winthrop]
-[page 112]
+[page 112a]
 [begin song 43 Till There Was You (Reprise)]
 [page 113a]
+prompt=113: ``till there was you.''
 [end song 43 Till There Was You (Reprise)]
 [enter Marcellus]
 [enter Constable Locke]
 speaks=no
 [page 113b]
+prompt=113: ``that way --- that way!''
 [exit Marian]
 [exit Winthrop]
 [exit Marcellus]
 [exit Harold]
 [exit Constable Locke]
 [end sound background evening outdoors]
+
 [page 113c]
+prompt=113: Scene seven opens
 [scene 7]
 [begin sound background rain]
 [enter Mayor Shinn]
@@ -1287,8 +1431,14 @@ speaks=no
 [enter Man #2 page 114]
 [enter Woman #1 page 114]
 [enter Woman #2 page 114]
-[enter Man #3 page 114]
 [enter Woman #3 page 114]
+[enter Man #3 page 114]
+[quiet Man #1 page 114]
+[quiet Man #2 page 114]
+[quiet Woman #1 page 114]
+[quiet Woman #2 page 114]
+[quiet Man #3 page 114]
+[quiet Woman #3 page 114]
 [enter Mrs. Paroo]
 speaks=no
 [enter Zaneeta]
@@ -1304,33 +1454,61 @@ speaks=no
 [enter Eulalie]
 speaks=no
 [enter Alma]
+[quiet Alma]
 [enter Man #1 page 115]
+[quiet Man #1 page 115]
+[enter Man #2 page 115]
+[quiet Man #2 page 115]
 [enter Woman page 115]
+[quiet Woman page 115]
 [enter Maud]
+[quiet Maud]
 [enter Charlie Cowell]
 speaks=no
 [page 114a]
+prompt=114: ``Four Score ---''
+[speak Man #1 page 115]
 [page 114b]
-[quiet Woman #1 page 114]
+prompt=114: ``get our money back''
+[speak Man #2 page 114]
 [page 114c]
-[quiet Woman #2 page 114]
+prompt=114: ``for uniforms, just tonight!''
+[speak Woman #1 page 114]
 [page 114d]
-[quiet Man #3 page 114]
+prompt=114: ``seen them uniforms yet!'
 [page 114e]
-[quiet Woman #3 page 114]
+prompt=114: ``He's slippery.  I told you ---''
+[speak Woman #2 page 114]
+[page 114f]
+prompt=114: ``since just after supper!''
+[speak Man #3 page 114]
+[page 114g]
+prompt=114: ``He's a kidnapper!''
+[speak Woman #3 page 114]
+[page 114h]
+prompt=114: ``Fine situation here!''
+[page 114i]
+prompt=114: ``Four Score ---''
 [enter Constable Locke]
 speaks=no
 [enter Harold]
 [enter Marian]
 [page 115a]
+prompt=115: ``Where's the band?''
 [enter Tommy]
 speaks=no
 [enter Winthrop]
 speaks=no
 [sound 13 crack as Marian makes a baton for Harold]
 [page 115b]
+prompt=115: Mayor Shinn shakes hands with Tommy
+[speak Alma]
+[speak Man #1 page 115]
+[speak Maud]
+[speak Man #2 page 115]
 [song 44 Finale --- Act 2]
 [page 116a]
+prompt=116: Harold embraces Marian
 [end sound background rain]
 [exit Charlie Cowell]
 [exit Mayor Shinn]
@@ -1349,6 +1527,7 @@ speaks=no
 [exit Eulalie]
 [exit Alma]
 [exit Man #1 page 115]
+[exit Man #2 page 115]
 [exit Woman page 115]
 [exit Maud]
 [exit Constable Locke]

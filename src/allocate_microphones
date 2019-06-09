@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.3 2019-06-02',
+                     version='allocate_microphones 3.4 2019-06-09',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -110,11 +110,21 @@ current_code = ""
 # Processing routines for each code.
 #
 
+# Information given in the [show] section is passed to the LaTeX file
+# in parameters.tex.
+parameters_dict = dict()
+
+
 # The name of the stage play
 show_name = ""
 def show_start(value):
   global show_name
+  global parameters_dict
   show_name = value
+  parameters_dict ["ShowName"] = value
+  if (do_trace == 1):
+    tracefile.write ("Show command sets name as " + value + ".\n")
+    pprint.pprint (parameters_dict, tracefile)
   return
 
 venue_name = ""
@@ -123,16 +133,22 @@ def show_keyword_value (keyword, value):
   global error_counter
   global venue_name
   global designer_name
-  if (keyword == "venue"):
+  global parameters_dict
+
+  parameters_dict [keyword] = value
+  
+  if (do_trace == 1):
+    tracefile.write ("Show keyword command sets " +
+                     keyword + " as " + value + ".\n")
+    pprint.pprint (parameters_dict, tracefile)
+  if (keyword == "Venue"):
     venue_name = value
     return
 
-  if (keyword == "designer"):
+  if (keyword == "Designer"):
     designer_name = value
     return
   
-  print ("Unknown show clause: " + keyword + "=" + value)
-  error_counter = error_counter + 1
   return
  
 def show_end():
@@ -2231,7 +2247,7 @@ for the_microphone in range (1, max_microphone+1):
           roll_names = the_character ["name"]
       listfile.write (quote_for_tex(roll_names))
       break
-  listfile.write ("\\vfil}}" + "\n")
+  listfile.write ("\\vfil}\\vfil}" + "\n")
 listfile.close()
 
 # Convert the page log into a microphone move dictionary keyed by
@@ -3532,8 +3548,8 @@ for this_page in page_list:
     microphone_cue_count = microphone_cue_count + 1
     listfile1.write ("\\vskip 0.25in ")
     if (prompt != ""):
-      listfile1.write ("\\vbox {\\parbox[t]{2.5in}{{\\em " +
-                       quote_for_tex(prompt) + "} ")
+      listfile1.write ("\\vbox {\\parbox[t]{2.5in}{{\\textbf{" +
+                       quote_for_tex(prompt) + "}} ")
     else:
       listfile1.write ("\\vbox {\\parbox[t]{0.5in}{" +
                        quote_for_tex(format_pageno(this_page)) + "\\hfil}")
@@ -3683,7 +3699,7 @@ for this_page in page_list:
     if (max_microphones_in_use_count < len(microphone_list)):
       max_microphones_in_use_count = len(microphone_list)
       max_microphones_in_use_page = this_page
-    listfile1.write ("}}" + "\n")
+    listfile1.write ("}}" + "\\vfil\n")
     listfile2.write ("\n\n")
     prev_microphone_list = microphone_list
     prev_page = this_page
@@ -3706,13 +3722,26 @@ if (len(prev_microphone_list) != 0):
                      find_profile_tex(this_microphone, this_page) +
                      " on microphone " +
                      str(this_microphone))
-  listfile1.write (". (All off.)" + "}}" + "\n")
+  listfile1.write (". (All off.)" + "}}" + "\\vfil\n")
   listfile2.write (". Note that all microphones are off.\n\n")
   
 listfile1.close()
 
 listfile2.write ("\\end{description}\n")
 listfile2.close()
+
+# Write the parameters into a file in case the microphone document
+# has a use for them.
+
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".parameters.tex", "wt")
+for parameter_name in parameters_dict:
+  listfile.write ("\\newcommand{\\Parameter" +
+                  quote_for_tex(parameter_name) + "}" +
+                  "{" +
+                  quote_for_tex(parameters_dict[parameter_name]) +
+                  "}\n")
+listfile.close()
 
 if ((verbosity_level > 0) and (max_microphones_in_use_page != "")):
   print ("Maximum of " + str(max_microphones_in_use_count) +

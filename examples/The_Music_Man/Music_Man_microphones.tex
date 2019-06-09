@@ -7,22 +7,30 @@
 \usepackage{multicol}
 \usepackage{array}
 \usepackage{longtable}
+\usepackage{embedfile}
+\usepackage{hyperref}
+\embedfile [desc={parameters}]{Music_Man.txt.parameters.tex}
+\input{Music_Man.txt.parameters.tex}
 % Pages styles
 \makeatletter
 \newcommand\ps@Standard{
-  \renewcommand\@oddhead{Microphones for The Music Man\hfill June 1, 2019}
+  \renewcommand\@oddhead{Microphones for {\ParameterShowName}\hfill
+    {\ParameterDateText}}
   \renewcommand\@evenhead{\@oddhead}
   \renewcommand\@oddfoot{\hfil Page {\thepage} \hfil}
   \renewcommand\@evenfoot{\@oddfoot}
   \renewcommand\thepage{\arabic{page}}
 }
 \makeatother
+\embedfile [desc={input file to allocate\_microphones}]{Music_Man.txt}
 \pagestyle{Standard}
 \setlength\tabcolsep{1mm}
 \renewcommand\arraystretch{1.3}
-\title{Microphones for The Music Man}
-\author{John Sauter}
-\date{2019-06-01}
+\title{Microphones for {\ParameterShowName}}
+\author{\ParameterDesigner}
+\hypersetup{pdfauthor={\ParameterDesigner},
+  pdftitle={Microphones for {\ParameterShowName}}}
+\date{\ParameterDateNumeric}
 \begin{document}
 \maketitle
 \tableofcontents
@@ -34,33 +42,35 @@ In general, whenever an actor speaks, or sings by himself, he has a microphone.
 \subsection {Assignments}
 Microphones are assigned to actors as follows:
 
+\embedfile [desc={input file}] {Music_Man.txt.assignments.tex}
 \begin{center}
 \begin{longtable}{|l|m{7in}|}
 \hline Mic. & Assignment \endhead \hline
-\input music_man.txt.assignments.tex
+\input {Music_Man.txt.assignments.tex}
 \end{longtable}
 \end{center}
 
 \subsection {Microphone Moves, by Page}
 
+\embedfile [desc={input file}] {Music_Man.txt.microphone_moves.tex}
 \begin{center}
 \begin{longtable}{|l|m{7in}|}
 \hline page & moves \endhead \hline
-\input music_man.txt.microphone_moves.tex
+\input {Music_Man.txt.microphone_moves.tex}
 \end{longtable}
 \end{center}
 
 \subsection {Microphone Handling Instructions for Each Actor}
 
-These instructions are formatted to be sliced into a strip of paper
-for each of the actors to carry in order to remember his instructions.
+Each of these instructions is formatted to be sliced into a strip of paper
+for the actor to carry in order to remember his microphone handling.
 In addition, the complete list can be posted near the shoe tree that
 holds the microphones.
 
 \vskip 0.25in
-
+\embedfile [desc={input file}] {Music_Man.txt.actors.tex}
 {\setlength{\parindent}{0in}
-\input music_man.txt.actors.tex
+\input {Music_Man.txt.actors.tex}
 }
 
 \subsection {List of Microphone Transactions for the Stage Manager}
@@ -69,10 +79,11 @@ holds the microphones.
 
 These actors are the first to enter with their microphones:
 
+\embedfile [desc={input file}] {Music_Man.txt.stage_manager_before_show.tex}
 \begin{center}
 \begin{longtable}{|l|l|}
 \hline Mic. & Actor \endhead \hline
-\input music_man.txt.stage_manager_before_show.tex
+\input {Music_Man.txt.stage_manager_before_show.tex}
 \end{longtable}
 \end{center}
 
@@ -82,10 +93,11 @@ As the show progresses, some actors will have to share microphones. The
 following list shows when microphones become free as actors leave the
 stage, and when they go back into use on a different actor.
 
+\embedfile [desc={input file}] {Music_Man.txt.stage_manager_during_show.tex}
 \begin{center}
 \begin{longtable}{|l|l|l|l|}
 \hline page & Mic. & Direction & Actor \endhead \hline
-\input music_man.txt.stage_manager_during_show.tex
+\input {Music_Man.txt.stage_manager_during_show.tex}
 \end{longtable}
 \end{center}
 
@@ -93,10 +105,11 @@ stage, and when they go back into use on a different actor.
 
 At the end of the show, retrieve the microphones from these actors
 
+\embedfile [desc={input file}] {Music_Man.txt.stage_manager_after_show.tex}
 \begin{center}
 \begin{longtable}{|l|l|}
 \hline Mic. & Actor \endhead \hline
-\input music_man.txt.stage_manager_after_show.tex
+\input {Music_Man.txt.stage_manager_after_show.tex}
 \end{longtable}
 \end{center}
 
@@ -106,10 +119,11 @@ In case we start a rehearsal at the intermission, here are the microphone
 assignments at the end of intermission.  This list can also be useful as a 
 cross-check during a production.
 
+\embedfile [desc={input file}] {Music_Man.txt.stage_manager_at_intermission.tex}
 \begin{center}
 \begin{longtable}{|l|l|}
 \hline Mic. & Actor \endhead \hline
-\input music_man.txt.stage_manager_at_intermission.tex
+\input {Music_Man.txt.stage_manager_at_intermission.tex}
 \end{longtable}
 \end{center}
 
@@ -117,27 +131,31 @@ cross-check during a production.
 
 Here are the microphone cues, with character names.  If you
 have a sequencer you can use this information to program
-the sequencer.
+the sequencer.  Cue names are a page number followed by a letter; cues
+proceed down the page.  If a cue happens within a song, the cue name
+has a dash and the measure number appended.
 
-\input music_man.txt.microphone_switching_annotated.tex
+\embedfile [desc={input file}] {Music_Man.txt.microphone_switching_annotated.tex}
+\input {Music_Man.txt.microphone_switching_annotated.tex}
 
 \subsection {Shoe Tree Labels}
 
-When not being worn by an actor, the 24 microphones are stored in a shoe tree,
+When not being worn by an actor, the microphones are stored in a shoe tree,
 which is 4 shoes wide by 6 shoes tall.  
 Each slot has a space at the top 4.75 inches wide
 by 1.5 inches high.  We provide here a label for each slot showing which
-actors use that microphone, and when.
+actors use that microphone.
 
+\embedfile [desc={input file}] {Music_Man.txt.microphone_labels.tex}
 {\Large
-\input music_man.txt.microphone_labels.tex
+\input {Music_Man.txt.microphone_labels.tex}
 }
 
 \subsection {Front of House operator}
 
 The Front of House operator controls the house mixer, 
 which contains a volume slider
-and mute button for each microphone and each DCA.
+and mute button for each microphone.  
 
 \subsubsection {Microphone Labels}
 
@@ -145,15 +163,17 @@ Associated with each slider is space to write a name.
 These spaces are 1 inch wide by 0.75 inch tall.  
 Here is a label for each space:
 
+\embedfile [desc={input file}] {Music_Man.txt.microphone_channels.tex}
 {\Large
-\input music_man.txt.microphone_channels.tex
+\input {Music_Man.txt.microphone_channels.tex}
 }
 
 \subsubsection {Microphone Switching Instructions by Page}
 
-These instructions are intended to be pasted into the script for users
-of manual sound boards.
+These instructions are intended to be pasted into the script
+for users of manual sound boards.
 
-\input music_man.txt.microphone_switching.tex
+\embedfile [desc={input file}] {Music_Man.txt.microphone_switching.tex}
+\input {Music_Man.txt.microphone_switching.tex}
 
 \end{document}
