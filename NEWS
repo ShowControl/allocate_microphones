@@ -1,3 +1,6 @@
+2019-06-23	Don't write a cue for X32 Theatre Control if nothing has
+		changed since the last cue.  Version 3.5.
+		
 2019-06-09	Add parameters file.  Version 3.4.
 
 2019-06-02	Add prompt.  Version 3.3.

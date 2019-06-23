@@ -4,8 +4,8 @@
 [show The Music Man]
 Venue=Manchester Community Theater
 Designer=John Sauter
-DateNumeric=2019-06-09
-DateText=June 9, 2019
+DateNumeric=2019-06-23
+DateText=June 23, 2019
 
 [microphones 32]
 [DCA 8]
@@ -23,6 +23,7 @@ group=Quartet
 group=Quartet
 [character Olin]
 group=Quartet
+[character Constable Locke]
 [character Charlie Cowell]
 [character Mayor Shinn]
 [character Eulalie]
@@ -37,7 +38,6 @@ group=Quartet
 [character Maud]
 [character Mrs. Squires]
 [character Gracie]
-[character Constable Locke]
 [character Conductor]
 [character Salesman #1]
 group=Train passengers
@@ -769,10 +769,15 @@ prompt=45: ``interesting information about you.''
 prompt=48: ``The sadder but wiser girl for me.''
 [exit Marcellus]
 [enter Alma]
+group=pick-a-little
 [enter Maud]
+group=pick-a-little
 [enter Mrs. Squires]
+group=pick-a-little
 [enter Ethel]
+group=pick-a-little
 [enter Eulalie]
+group=pick-a-little
 [page 50]
 [duration 30]
 [begin song 17 Pick-a-Little, Talk-a-Little & Goodnight, Ladies]

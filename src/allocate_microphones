@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.4 2019-06-09',
+                     version='allocate_microphones 3.5 2019-06-23',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -3327,16 +3327,10 @@ if (do_trace == 1):
 # It is a dictionary indexed by DCA number, with entries
 # for number, profiles and name.
 cue_number = 1;
+prev_profiles_in_DCA = dict()
+prev_DCA_names = dict()
 for this_page in page_list:
-  listfile.write ("INSERT INTO cues VALUES (")
-  listfile.write (str(cue_number))
-  listfile.write (",0, " + '"')
   page_dict = pages[this_page]
-  prompt = format_pageno (this_page)
-  if ("prompt" in page_dict):
-    prompt = page_dict["prompt"]
-  listfile.write (prompt)
-  listfile.write ('", ')
   DCA_info = dict()
   for DCA_number in DCAs:
     this_DCA = DCAs[DCA_number]
@@ -3364,39 +3358,79 @@ for this_page in page_list:
     tracefile.write ("DCA_info for page " + this_page + ":\n")
     pprint.pprint (DCA_info, tracefile)
 
-  # Write profile IDs for each DCA
-  first_DCA = 1
+  # Determine the profile ID for each DCA
+  # profiles_in_DCA is a dictionary indexed by DCA number.  Each element
+  # is a list of the profile IDs used by that DCA.
+  profiles_in_DCA = dict()
   for DCA_number in range (0,8):
+    profiles_in_DCA[DCA_number] = list()
     this_DCA_info = DCA_info[DCA_number]
     if (do_trace == 1):
       tracefile.write ("this_DCA_info for DCA " + str(DCA_number) + ":\n")
       pprint.pprint (this_DCA_info, tracefile)
-    if (first_DCA == 0):
-      listfile.write (",")
-    listfile.write ("'")
     if ("profiles" in this_DCA_info):
-      first_profile = 1
       the_profiles = this_DCA_info["profiles"]
       for profile_ID in the_profiles:
-        if (first_profile == 0):
-          listfile.write (",")
-        listfile.write (str(profile_ID))
         if (do_trace == 1):
           tracefile.write ("DCA " + str(DCA_number) +
                            " gets profile " + str(profile_ID) + ".\n")
-        first_profile = 0
+        profiles_in_DCA[DCA_number] = profiles_in_DCA[DCA_number] + [profile_ID]
+        
+  # Capture the current name of each DCA.
+  # Current_DCA_names is a dictionary indexed by DCA number.  The element
+  # is the name of the DCA on this page.
+  current_DCA_names = dict()
+  for DCA_number in range (0,8):
+    this_DCA_info = DCA_info[DCA_number]
+    current_DCA_names[DCA_number] = ""
+    if ("name" in this_DCA_info):
+      current_DCA_names[DCA_number] = this_DCA_info["name"]
+
+  # profiles_in_DCA and current_DCA_names have all the information we need.
+  # If it has not changed since the last page, don't write a cue.
+  if ((profiles_in_DCA == prev_profiles_in_DCA) and
+      (current_DCA_names == prev_DCA_names)):
+    continue
+  
+  # Write the cue line.
+  listfile.write ("INSERT INTO cues VALUES (")
+  listfile.write (str(cue_number))
+  listfile.write (",0, " + '"')
+  prompt = format_pageno (this_page)
+  if ("prompt" in page_dict):
+    prompt = page_dict["prompt"]
+  listfile.write (prompt)
+  listfile.write ('", ')
+
+  # Write which profiles are unmuted in each DCA.
+  first_DCA = 1
+  for DCA_number in range(0,8):
+    if (first_DCA == 0):
+      listfile.write (",")
+    listfile.write ("'")
+    first_profile = 1
+    the_profiles = profiles_in_DCA[DCA_number]
+    for profile_ID in the_profiles:
+      if (first_profile == 0):
+        listfile.write (",")
+      listfile.write (str(profile_ID))
+      first_profile = 0
     listfile.write ("'")
     first_DCA = 0
 
   # Write the name of each DCA
-  first_DCA = 1
   for DCA_number in range (0,8):
-    this_DCA_info = DCA_info[DCA_number]
-    if ("name" in this_DCA_info):
-      listfile.write (", '" + this_DCA_info["name"] + "'")
-    else:
-      listfile.write (", ''")
+    listfile.write (", ")
+    listfile.write ("'")
+    listfile.write (current_DCA_names[DCA_number])
+    listfile.write ("'")
   listfile.write (",'', '', '', '', '');\n")
+
+  # Remember the information so we don't write the cue again if
+  # it has not changed.
+  prev_DCA_names = current_DCA_names
+  prev_profiles_in_DCA = profiles_in_DCA
+  
   cue_number = cue_number + 1
   
 listfile.write ("CREATE TABLE 'positions' ('id' " +
