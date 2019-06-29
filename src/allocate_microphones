@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.5 2019-06-23',
+                     version='allocate_microphones 3.6 2019-06-29',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -2171,7 +2171,7 @@ for the_microphone in range (1,max_microphone+1):
   if (len(this_microphone_log) == 0):
     continue
   listfile.write (str(the_microphone) + "&")
-  listfile.write ("\\begin{itemize}\n\item ")
+  listfile.write ("\\begin{itemize}\n\\item ")
   microphone_actor_list = []
   for this_log_entry in this_microphone_log:
     the_actor = this_log_entry [0]
@@ -3502,7 +3502,7 @@ listfile.close()
 # The first is intended to be pasted into the script so it can be
 # used with a manual sound board, and so is very brief.
 # The annotated version is intended for
-# programming a sequencer and so includes the profile name.
+# programming a sequencer and so is much wordier.
 
 def find_profile_tex (the_microphone, the_page):
   profile_ID, group_name = find_profile [(the_page, the_microphone)]
@@ -3545,7 +3545,6 @@ listfile1 = open (os.path.join (output_directory, output_root) +
                  ".microphone_switching.tex", "wt")
 listfile2 = open (os.path.join (output_directory, output_root) +
                  ".microphone_switching_annotated.tex", "wt")
-listfile2.write ("\\begin{description}\n")
 
 prev_microphone_list = []
 prev_page = ""
@@ -3589,22 +3588,22 @@ for this_page in page_list:
                        quote_for_tex(format_pageno(this_page)) + "\\hfil}")
       listfile1.write ("\\parbox[t]{2in}{" )
     if (prompt != ""):
-      listfile2.write ("\\item[" + quote_for_tex(prompt) + "]\n")
+      listfile2.write ("\\subsection* {" + quote_for_tex(prompt) + "}\n")
     else:
-      listfile2.write ("\\item[" +
-                       quote_for_tex(format_pageno(this_page)) + "]\n")
+      listfile2.write ("\\subsection* {" +
+                       quote_for_tex(format_pageno(this_page)) + "}\n")
     if (len(turn_on_list) > 0):
       listfile1.write ("On: " )
-      listfile2.write ("Switch on ")
+      listfile2.write ("\\subsubsection* {Switch On}\n")
+      listfile2.write ("\\begin{enumerate}\n")
       first_microphone = 1
       for this_microphone in turn_on_list:
         if (first_microphone == 0):
           listfile1.write (", ")
-          listfile2.write (", ")
         else:
            first_microphone = 0
         listfile1.write (str(this_microphone))
-        listfile2.write ("character " +
+        listfile2.write ("\\item Character " +
                          find_profile_tex (this_microphone, this_page) +
                          " on microphone " + str(this_microphone))
         group = microphone_group [(this_page, this_microphone)]
@@ -3615,31 +3614,34 @@ for this_page in page_list:
         if (the_DCA != None):
           listfile2.write (" using DCA " + str(the_DCA["number"]) +
                            " named " + quote_for_tex(the_name))
+        listfile2.write (".\n")
       listfile1.write (". ")
-      listfile2.write (". ")
+      listfile2.write ("\\end{enumerate}\n")
     if (len(turn_off_list) > 0):
       listfile1.write ("Off: ")
-      listfile2.write ("Switch off ")
+      listfile2.write ("\\subsubsection* {Switch Off}\n")
+      listfile2.write ("\\begin{enumerate}\n")
       first_microphone = 1
       for this_microphone in turn_off_list:
         if (first_microphone == 0):
           listfile1.write (", ")
-          listfile2.write (", ")
         else:
            first_microphone = 0
         listfile1.write (str(this_microphone))
-        listfile2.write ("character " +
+        listfile2.write ("\item Character " +
                          find_profile_tex (this_microphone, prev_page) +
-                         " on microphone " + str(this_microphone))
+                         " on microphone " + str(this_microphone) +
+                         ".\n")
       listfile1.write (". ")
-      listfile2.write (". ")
+      listfile2.write ("\\end{enumerate}\n")
     if (len(change_group_list) > 0):
       listfile1.write ("Change group: ")
+      listfile2.write ("\\subsubsection* {Change Group}\n")
+      listfile2.write("\\begin{enumerate}\n")
       first_microphone = 1
       for this_microphone in change_group_list:
         if (first_microphone == 0):
           listfile1.write (", ")
-          listfile2.write (". ")
         else:
           first_microphone = 0
         group = microphone_group [(this_page, this_microphone)]
@@ -3650,7 +3652,7 @@ for this_page in page_list:
                             " moves from " +
                             quote_for_tex(prev_group) +
                             " to " + quote_for_tex(group))
-            listfile2.write ("Character " +
+            listfile2.write ("\\item Character " +
                              find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
@@ -3664,7 +3666,7 @@ for this_page in page_list:
           else:
             listfile1.write (str(this_microphone) +
                             " moves to " + quote_for_tex(group))
-            listfile2.write ("Character " +
+            listfile2.write ("\\item Character " +
                              find_profile_tex(this_microphone, this_page) +
                              " on microphone " +
                              str(this_microphone) +
@@ -3676,7 +3678,7 @@ for this_page in page_list:
         else:
           listfile1.write (str(this_microphone) +
                           " leaves " + quote_for_tex(prev_group))
-          listfile2.write ("Character " +
+          listfile2.write ("\\item Character " +
                            find_profile_tex(this_microphone, this_page) +
                            " on microphone " +
                            str(this_microphone) +
@@ -3685,9 +3687,9 @@ for this_page in page_list:
           if (the_DCA != None):
             listfile2.write (" now using DCA " + str(the_DCA["number"]) +
                                " named " + quote_for_tex(the_name))
-
+        listfile2.write (".\n")
       listfile1.write (". ")
-      listfile2.write (". ")
+      listfile2.write ("\end{enumerate}\n")
 
     # If any microphones have been turned off, note which microphones
     # are still on, so the microphone operator can verify that he has
@@ -3700,6 +3702,7 @@ for this_page in page_list:
       else:
         if (len(microphone_list) == 1):
           listfile1.write ("(Still on: " + str(microphone_list[0]) + ".)")
+          listfile2.write ("\\subsubsection* {Still On}\n")
           listfile2.write ("Note that character " +
                            find_profile_tex (microphone_list[0], this_page) +
                            " on microphone " + str(microphone_list[0]) +
@@ -3712,56 +3715,63 @@ for this_page in page_list:
 
         else:
           listfile1.write ("(Still on: ")
-          listfile2.write ("Note that characters ")
+          listfile2.write ("\\subsubsection* {Still On}\n")
+          listfile2.write ("Note that the following microphones " +
+                           "are still on:\n")
+          listfile2.write ("\\begin{enumerate}\n")
           first_microphone = 1
           for this_microphone in microphone_list:
             if (first_microphone == 0):
               listfile1.write (", ")
-              listfile2.write (", ")
             else:
               first_microphone = 0
             listfile1.write (str(this_microphone))
-            listfile2.write (find_profile_tex(this_microphone, this_page) +
+            listfile2.write ("\\item Character " +
+                             find_profile_tex(this_microphone, this_page) +
                              " on microphone " + str(this_microphone))
             the_DCA, the_name = find_DCA (this_microphone, this_page)
             if (the_DCA != None):
               listfile2.write (" using DCA " + str(the_DCA["number"]) +
                                " named " + quote_for_tex(the_name))
+            listfile2.write (".\n")
           listfile1.write (".)")
-          listfile2.write (" are still on.  ")
+          listfile2.write ("\\end{enumerate}\n")
             
     if (max_microphones_in_use_count < len(microphone_list)):
       max_microphones_in_use_count = len(microphone_list)
       max_microphones_in_use_page = this_page
     listfile1.write ("}}" + "\\vfil\n")
-    listfile2.write ("\n\n")
     prev_microphone_list = microphone_list
     prev_page = this_page
 
 if (len(prev_microphone_list) != 0):
+  print ("Michophones still on at end of show.")
+  error_counter = error_counter + 1
   microphone_cue_count = microphone_cue_count + 1
   listfile1.write ("\\vbox {\parbox[t]{0.3in}{" +
                   format_pageno(page_list[-1]) + "\\hfil}" +
                   "\\parbox[t]{2in}{" + "Off: ")
-  listfile2.write ("Switch off ")
+  listfile2.write ("\\begin{enumerate}\n")
+  listfile2.write ("\\subsection* {Final Switch Off}\n")
+  listfile2.write ("\\begin{enumerate}\n")
   first_microphone = 1
   for this_microphone in prev_microphone_list:
     if (first_microphone == 0):
       listfile1.write (", ")
-      listfile2.write (", ")
     else:
       first_microphone = 0
     listfile1.write (str(this_microphone))
-    listfile2.write ("character " +
+    listfile2.write ("\\item Character " +
                      find_profile_tex(this_microphone, this_page) +
                      " on microphone " +
-                     str(this_microphone))
+                     str(this_microphone) + ".\n")
   listfile1.write (". (All off.)" + "}}" + "\\vfil\n")
-  listfile2.write (". Note that all microphones are off.\n\n")
-  
+  listfile2.write ("\\end{enumerate}\n")
+  listfile2.write ("Note that all microphones are off.\n")
+
+listfile1.write ("\\vfill\n")
 listfile1.close()
 
-listfile2.write ("\\end{description}\n")
 listfile2.close()
 
 # Write the parameters into a file in case the microphone document

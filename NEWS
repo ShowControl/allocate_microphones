@@ -1,3 +1,6 @@
+2019-06-29	Improve the presentation of the sequencer programming section.
+		Version 3.6
+		
 2019-06-23	Don't write a cue for X32 Theatre Control if nothing has
 		changed since the last cue.  Version 3.5.
 		
