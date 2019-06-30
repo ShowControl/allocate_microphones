@@ -99,11 +99,27 @@ rolls = {}
 
 groups = dict()
 group_number = 1
-group_dict = dict()
-group_dict["number"] = group_number
-group_dict["name"] = ""
-group_number = group_number + 1
-groups[""] = group_dict
+DCA_priorities = list()
+def create_group (name, DCA_priority):
+  global group_number
+  global groups
+  global DCA_priorities
+  group_dict = dict()
+  group_dict["number"] = group_number
+  group_number = group_number + 1
+  group_dict["name"] = name
+  group_dict["DCA_priority"] = DCA_priority
+  groups[name] = group_dict
+  if (DCA_priority not in DCA_priorities):
+    DCA_priorities = DCA_priorities + [DCA_priority]
+    DCA_priorities.sort(reverse=True)
+  if (do_trace == 1):
+    tracefile.write ("Created group " + name +
+                     ", DCA_priority " + str(DCA_priority) + ".\n")
+    pprint.pprint (DCA_priorities, tracefile)
+  return
+
+create_group ("", 50)
 
 current_code = ""
 
@@ -227,8 +243,6 @@ def character_start (value):
 def character_keyword_value (keyword, value):
   global current_character
   global error_counter
-  global groups
-  global group_number
   if (keyword == "group"):
     if (value in characters):
       print ("Character " + value + " already defined; " +
@@ -238,16 +252,15 @@ def character_keyword_value (keyword, value):
     group_name = value
     # In solo style, group "" means the solo group.  In nosolo style,
     # group "" means the group with the same name as the character.
+    DCA_priority = 50
     if ((DCA_style == "nosolo") and (group_name == "")):
       group_name = current_character["name"]
+      DCA_priority = 100
     current_character ["group"] = group_name
     if (group_name not in groups):
-      group_dict = dict()
-      group_dict["number"] = group_number
-      group_dict["name"] = group_name
-      group_number = group_number + 1
-      groups[group_name] = group_dict
+      create_group (group_name, DCA_priority)
     return
+  
   if (keyword == "preferred_DCA"):
     if (do_trace == 1):
       tracefile.write ("Preferred DCA of " + str(int(value)) +
@@ -275,19 +288,13 @@ current_group = ""
 def group_start (value):
   global current_group
   global error_counter
-  global groups
-  global group_number
   if (value in characters):
     print ("Character " + value + " already defined; " +
            "group names must be different from character names.")
     error_counter = error_counter + 1
     return
   if (value not in groups):
-    group_dict = dict()
-    group_dict["number"] = group_number
-    group_dict["name"] = value
-    group_number = group_number + 1
-    groups[value] = group_dict
+    create_group (value, 50)
   current_group = value
   return
 
@@ -543,7 +550,7 @@ def format_pageno (the_pageno):
     mid_digits = match_digits.groupdict() ["mid_digits"]
     sep2 = match_digits.groupdict() ["sep2"]
     trail_digits = match_digits.groupdict() ["trail_digits"]
-    if (do_trace == 1):
+    if (do_trace > 1):
       tracefile.write ("Formatting " + the_pageno + ".\n")
       tracefile.write ("lead: " + lead_digits + ".\n")
       tracefile.write ("sep1: " + sep1 + ".\n")
@@ -552,23 +559,23 @@ def format_pageno (the_pageno):
       tracefile.write ("trail: " + trail_digits + ".\n")
     if ((mid_digits == "0000") and (sep2 == "-")):
       if ((trail_digits == "0000") and (sep1 == "-")):
-        if (do_trace == 1):
+        if (do_trace > 1):
           tracefile.write ("Return 1: " + str(int(lead_digits)) + "\n");
         return str(int(lead_digits))
       if (trail_digits == "0000"):
-        if (do_trace == 1):
+        if (do_trace > 1):
           tracefile.write ("Return 2: " + str(int(lead_digits)) + sep1 + "\n")
         return (str(int(lead_digits)) + sep1)
       if (sep2 == "-"):
-        if (do_trace == 1):
+        if (do_trace > 1):
           tracefile.write ("Return 6: " + str(int(lead_digits)) + sep1 +
                            str(int(trail_digits)) + "\n.")
         return (str(int(lead_digits)) + sep1 + str(int(trail_digits)))
-      if (do_trace == 1):
+      if (do_trace > 1):
             tracefile.write ("Return 3: " + str(int(lead_digits)) + sep1 +
                              sep2 + str(int(trail_digits)) + "\n")
       return (str(int(lead_digits)) + sep1 + sep2 + str(int(trail_digits)))
-    if (do_trace == 1):
+    if (do_trace > 1):
       tracefile.write ("Return 4: " +
                        str(int(lead_digits)) + sep1 +
                        str(int(mid_digits)) + sep2 +
@@ -790,8 +797,6 @@ def enter_start (value):
 def enter_keyword_value (keyword, value):
   global error_counter
   global current_character_record
-  global groups
-  global group_number
   the_character = current_character_record [0]
   character_name = the_character ["name"]
   if ((keyword == "speaks") and (value == "no")):
@@ -799,19 +804,17 @@ def enter_keyword_value (keyword, value):
     return
   group_name = value
   if (keyword == "group"):
+    DCA_priority = 50
     if ((DCA_style == "nosolo") and (group_name == "")):
       group_name = character_name
+      DCA_priority = 100
     current_character_record [2] = group_name
     character_current_group [character_name] = group_name
     if (group_name not in groups):
       if (do_trace == 1):
         tracefile.write ("Creating new group " + group_name +
                          " for character " + character_name + ".\n")
-      group_dict = dict()
-      group_dict["number"] = group_number
-      group_dict["name"] = group_name
-      group_number = group_number + 1
-      groups[group_name] = group_dict
+      create_group (group_name, DCA_priority)
     return
   print ("Unknown enter clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -849,23 +852,19 @@ def speak_start (character_name):
 def speak_keyword_value (keyword, value):
   global error_counter
   global current_character_record
-  global groups
-  global group_number
   if (keyword == "group"):
     character_record = current_character_record
     the_character = character_record [0]
     character_name = the_character ["name"]
     group_name = value
+    DCA_priority = 50
     if ((DCA_style == "nosolo") and (group_name == "")):
       group_name = character_name
+      DCA_priority = 100
     current_character_record [2] = group_name
     character_current_group [character_name] = group_name
     if (group_name not in groups):
-      group_dict = dict()
-      group_dict["number"] = group_number
-      group_dict["name"] = group_name
-      group_number = group_number + 1
-      groups[group_name] = group_dict
+      create_group (group_name, DCA_priority)
     return
   print ("Unknown speak caluse: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -894,23 +893,19 @@ def speaking_start (character_name):
 def speaking_keyword_value (keyword, value):
   global error_counter
   global current_character_record
-  global groups
-  global group_number
   if (keyword == "group"):
     character_record = current_character_record
     the_character = current_character_record [0]
     character_name = the_character ["name"]
     group_name = value
+    DCA_priority = 50
     if ((DCA_style == "nosolo") and (value == "")):
       group_name = character_name
+      DCA_priority = 100
     current_character_record [2] = group_name
     character_current_group [character_name] = group_name
     if (group_name not in groups):
-      group_dict = dict()
-      group_dict["number"] = group_number
-      group_dict["name"] = group_name
-      group_number = group_number + 1
-      groups[group_name] = group_dict
+      create_group (group_name, DCA_priority)
     return
   print ("Unknown speaking clause: " + keyword + "=" + value)
   error_counter = error_counter + 1
@@ -3006,10 +3001,8 @@ if (DCA_style == "nosolo"):
     if (matching_group_found == 0):
       if (do_trace == 1):
         tracefile.write ("Creating a group for profile " + profile_name + ".\n")
-      group_dict = dict()
-      group_dict["number"] = group_number
-      group_dict["name"] = profile_name
-      group_number = group_number + 1
+      create_group (profile_name, 100)
+      group_dict = groups[profile_name]
       based_on_list = profile["based_on"]
       if (do_trace == 1):
         tracefile.write ("Based on list: ")
@@ -3037,9 +3030,6 @@ if (DCA_style == "nosolo"):
                                " gets preferred DCA from character " +
                                character_name + ".\n")
             group_dict["preferred_DCA"] = character_dict ["preferred_DCA"]
-      groups[profile_name] = group_dict
-      if (do_trace == 1):
-        tracefile.write ("Adding group " + profile_name + ".\n")
 
 if (do_trace == 1):
   tracefile.write ("Groups 2:\n")
@@ -3193,58 +3183,228 @@ if (do_trace == 1):
   tracefile.write ("Group list:\n")
   pprint.pprint (group_list, tracefile)
 
+# Find good DCAs for a particular group.  This does a depth-first
+# recursive search, scoring from the bottom.
+# Return a two-element tuple consisting of the score for the best path
+# and the list of DCA assignments, one for each page in the list passed.
+# The score for each DCA in each page is the number of pages already
+# used by the DCA, plus 10000 if we must switch DCAs, plus 100000000 if
+# we must share a DCA.
+# If prev_DCA_number is None, we return the best choice of DCA number.
+# Otherwise, we prefer the prev_DCA_number.
+# In Solo style, the blank group is always assigned to DCA 0.
+def find_good_DCAs (this_group, group_pages, prev_DCA_number, search_cache):
+  if (do_trace > 1):
+    tracefile.write ("find_good_DCAs:\n")
+    pprint.pprint (group_pages, tracefile)
+  if (len(group_pages) == 0):
+    # We are at the bottom of the search.  The value we return
+    # will be propagated up the tree,
+    if (DCA_style == "solo"):
+      if (this_group["name"] == ""):
+        # Use the solo DCA.
+        if (prev_DCA_number == 0):
+          return ((0, [0]))
+        else:
+          return ((10000, [0]))
+        
+    # This is not solo style.
+    # There are no pages to check, so just return the previous DCA number.
+    return ((0, [prev_DCA_number]))
+
+  # If we have already evaluated this position, we can save some time by
+  # returning the previous value.
+  if ((group_pages, prev_DCA_number) in search_cache):
+    return search_cache[(group_pages, prev_DCA_number)]
+  
+  # We must search pages, then compute the score based on the
+  # best score found on subsequent pages + the score for this page.
+  DCA_scores = dict()
+  this_page = group_pages [0]
+  remaining_pages = group_pages[1:]
+  for DCA_number in range (0, DCA_count):
+    the_score, the_DCA_assignments = find_good_DCAs (this_group,
+                                                     remaining_pages,
+                                                     DCA_number,
+                                                     search_cache)
+    # Assess a small penalty for using a DCA that is already in use on
+    # another page.  This will spread the groups out among all the
+    # available DCAs.
+    this_DCA = DCAs[DCA_number]
+    if ("pages" in this_DCA):
+      DCA_page_count = len(this_DCA["pages"])
+    else:
+      DCA_page_count = 0
+    the_score = the_score + DCA_page_count
+    # If we must switch DCAs, assess a 10000-point penalty.
+    if ((prev_DCA_number != None) and (prev_DCA_number != DCA_number)):
+      the_score = the_score + 10000
+    # If the chosen DCA is occupied on this page,
+    # assess a 100000000-point penalty.
+    this_DCA = DCAs[DCA_number]
+    if ("pages" in this_DCA):
+      DCA_pages = this_DCA["pages"]
+      if (this_page in DCA_pages):
+        the_score = the_score + 100000000
+    DCA_scores[DCA_number] = (the_score, the_DCA_assignments)
+    # If the score is 0, we aren't going to find anything better, so
+    # stop now.
+    if (the_score == 9):
+      break
+    
+  if (do_trace == 1):
+    tracefile.write ("Searched for a DCA for group " + this_group["name"] +
+                     " on page " + this_page + ":\n")
+    pprint.pprint (DCA_scores, tracefile)
+
+  # Return the best score.
+  score_found = 0
+  best_score = 0
+  best_DCA_assignments = list()
+  for DCA_number in DCA_scores:
+    the_score, DCA_assignments = DCA_scores[DCA_number]
+    if ((score_found == 0) or (the_score < best_score)):
+      best_score = the_score
+      best_DCA_assignments = DCA_assignments
+      best_DCA_number = DCA_number
+      score_found = 1
+
+  # Remember our result so we won't have to compute it again.
+  search_cache [(group_pages, prev_DCA_number)] = (best_score,
+                                                   [best_DCA_number] +
+                                                   best_DCA_assignments)
+  return ((best_score, [best_DCA_number] + best_DCA_assignments))
+
+worst_score = 0
+worst_group = ""
+poorly_allocated_groups = list()
+very_poorly_allocated_groups = list()
 def assign_DCA (group_number):
+  global worst_score
+  global worst_group
+  global very_poorly_allocated_groups
+  global poorly_allocated_groups
   this_group = group_list[group_number]
   group_name = this_group["name"]
+  if ("pages" not in this_group):
+    return
+  preferred_DCA = None
+  if ("preferred_DCA" in this_group):
+    preferred_DCA = this_group["preferred_DCA"]
+  if (do_trace == 1):
+    tracefile.write ("Assigning DCAs for group " + str(group_number) +
+                     " = " + group_name +
+                     ", preferred DCA = " + str(preferred_DCA) + ".\n")
+  group_page = this_group["pages"]
+  if (do_trace > 1):
+    pprint.pprint (group_page, tracefile)
+  # Make a list of the pages that this group appears in.
+  group_pages_list = list()
   for this_page in page_list:
-    if ("pages" not in this_group):
-      continue
-    group_page = this_group["pages"]
     if (this_page in group_page):
-      the_profiles = group_page[this_page]
-      this_DCA = find_good_DCA (this_group, this_page)
-      if (do_trace == 1):
-        tracefile.write ("found DCA:\n")
-        pprint.pprint (this_DCA, tracefile)
-      this_group["old_DCA_number"] = this_DCA["number"]
-      DCA_pages = this_DCA ["pages"]
-      if (this_page not in DCA_pages):
-        the_DCA_page = dict()
+      group_pages_list = group_pages_list + [this_page]
+  if (do_trace > 1):
+    pprint.pprint (group_pages_list, tracefile)
+  search_cache = dict()
+  best_score, the_DCA_assignments = find_good_DCAs (this_group,
+                                                    tuple(group_pages_list),
+                                                    preferred_DCA,
+                                                    search_cache)
+  if (do_trace == 1):
+    tracefile.write ("Found good DCAs for " + group_name +
+                     ", score = " + str(best_score) + ":\n")
+
+  # Remember the highest scores, and who had them.
+  if (best_score > worst_score):
+    worst_score = best_score
+    worst_group = this_group["name"]
+
+  if (best_score >= 100000000):
+    very_poorly_allocated_groups = very_poorly_allocated_groups + \
+      [this_group["name"]]
+  else:
+    if (best_score >= 10000):
+      poorly_allocated_groups = poorly_allocated_groups + [this_group["name"]]
+        
+  # Mark the DCAs as being occupied by this group.
+  for this_DCA_number, this_page in zip(the_DCA_assignments, group_pages_list):
+    if (do_trace == 1):
+      tracefile.write ("DCA " + str(this_DCA_number) + " for page " +
+                       this_page + ".\n")
+    this_DCA = DCAs[this_DCA_number]
+    DCA_pages = this_DCA ["pages"]
+    if (this_page not in DCA_pages):
+      the_DCA_page = dict()
+      the_DCA_page["profiles"] = list()
+      the_DCA_page["names"] = list()
+      DCA_pages[this_page] = the_DCA_page
+    else:
+      the_DCA_page = DCA_pages[this_page]
+      if ("profiles" not in the_DCA_page):
         the_DCA_page["profiles"] = list()
+      if ("names" not in the_DCA_page):
         the_DCA_page["names"] = list()
-        DCA_pages[this_page] = the_DCA_page
-      else:
-        the_DCA_page = DCA_pages[this_page]
-        if ("profiles" not in the_DCA_page):
-          the_DCA_page["profiles"] = list()
-        if ("names" not in the_DCA_page):
-          the_DCA_page["names"] = list()
-      the_DCA_page["profiles"] = the_DCA_page["profiles"] + the_profiles
-      the_names = the_DCA_page["names"]
-      if (group_name not in the_names):
-        the_DCA_page["names"] = the_names + [group_name]
+    the_DCA_page["profiles"] = the_DCA_page["profiles"] + group_page[this_page]
+    the_names = the_DCA_page["names"]
+    if (group_name not in the_names):
+      the_DCA_page["names"] = the_names + [group_name]
   return
 
 # Assign groups to their preferred DCAs, if possible.
-for group_number in group_list:
-  group_dict = group_list[group_number]
-  if ("preferred_DCA" in group_dict):
-    assign_DCA (group_number)
+for DCA_priority in DCA_priorities:
+  if (do_trace == 1):
+    tracefile.write ("Working on DCA_priority " + str(DCA_priority) + ".\n")
+    pprint.pprint (DCA_priorities, tracefile)
+  for group_number in group_list:
+    group_dict = group_list[group_number]
+    if (group_dict["DCA_priority"] == DCA_priority):
+      if ("preferred_DCA" in group_dict):
+        if (do_trace == 1):
+          tracefile.write ("Assigning DCAs to " + group_dict["name"] +
+                           ", priority = " + str(DCA_priority) + ".\n")
+        assign_DCA (group_number)
 
 if (do_trace == 1):
   tracefile.write ("DCAs 2:\n")
   pprint.pprint (DCAs, tracefile)  
 
 # Assign groups without preferred DCAs.
-for group_number in group_list:
-  group_dict = group_list[group_number]
-  if ("preferred_DCA" not in group_dict):
-    assign_DCA (group_number)
+for DCA_priority in DCA_priorities:
+  if (do_trace == 1):
+    tracefile.write ("Working on DCA_priority " + str(DCA_priority) + ".\n")
+    pprint.pprint (DCA_priorities, tracefile)
+  for group_number in group_list:
+    group_dict = group_list[group_number]
+    if (group_dict["DCA_priority"] == DCA_priority):
+      if ("preferred_DCA" not in group_dict):
+        if (do_trace == 1):
+          tracefile.write ("Assigning DCAs to " + group_dict["name"] +
+                           ", priority = " + str(DCA_priority) + ".\n")
+        assign_DCA (group_number)
 
 if (do_trace == 1):
   tracefile.write ("DCAs 3:\n")
   pprint.pprint (DCAs, tracefile)  
 
+#
+# Print the names of the groups with the worst scores, so the destgner
+# can consider doing something about them.
+#
+if (len(very_poorly_allocated_groups) > 0):
+  print ("The following groups or characters were forced to share DCAs:")
+  for group_name in very_poorly_allocated_groups:
+    print (group_name)
+
+if (len(poorly_allocated_groups) > 0):
+  print ("The following groups or characters had to move from one DCA")
+  print (" to another:")
+  for group_name in poorly_allocated_groups:
+    print (group_name)
+    
+if (worst_score > 0):
+  print ("Character or group " + worst_group +
+         " has the worst DCA allocation score: " + str(worst_score) + ".")
+  
 if (do_trace == 1):
   tracefile.write ("Naming DCAs.\n")
 
@@ -3495,6 +3655,72 @@ listfile.write ("COMMIT;\n")
 listfile.close()
 
 #
+# Show in the trace file a concise layout of each DCA on each page.
+#
+if (do_trace == 1):
+  tracefile.write ("DCA summary:\n")
+  cue_number = 1;
+  prev_profiles_in_DCA = dict()
+  prev_DCA_names = dict()
+  for this_page in page_list:
+    page_dict = pages[this_page]
+    DCA_info = dict()
+    for DCA_number in DCAs:
+      this_DCA = DCAs[DCA_number]
+      this_DCA_info = dict()
+      this_DCA_info["number"] = DCA_number
+      DCA_info[DCA_number] = this_DCA_info
+    
+      DCA_pages = this_DCA["pages"]
+      DCA_page_found = 0
+      for the_page in DCA_pages:
+        if (the_page == this_page):
+          DCA_page = DCA_pages[the_page]
+          DCA_page_found = 1
+      if (DCA_page_found == 1):
+        DCA_name = DCA_page["name"]
+        if (DCA_name == ""):
+          DCA_name = "Solo"
+        this_DCA_info["name"] = DCA_name
+        this_DCA_info["profiles"] = DCA_page["profiles"]
+
+    # Determine the profile ID for each DCA
+    # profiles_in_DCA is a dictionary indexed by DCA number.  Each element
+    # is a list of the profile IDs used by that DCA.
+    profiles_in_DCA = dict()
+    for DCA_number in range (0,8):
+      profiles_in_DCA[DCA_number] = list()
+      this_DCA_info = DCA_info[DCA_number]
+      if ("profiles" in this_DCA_info):
+        the_profiles = this_DCA_info["profiles"]
+        for profile_ID in the_profiles:
+          profiles_in_DCA[DCA_number] = profiles_in_DCA[DCA_number] + \
+            [profile_ID]
+        
+    # Capture the current name of each DCA.
+    # Current_DCA_names is a dictionary indexed by DCA number.  The element
+    # is the name of the DCA on this page.
+    current_DCA_names = dict()
+    for DCA_number in range (0,8):
+      this_DCA_info = DCA_info[DCA_number]
+      current_DCA_names[DCA_number] = ""
+      if ("name" in this_DCA_info):
+        current_DCA_names[DCA_number] = this_DCA_info["name"]
+
+    # profiles_in_DCA and current_DCA_names have all the information we need.
+    # If it has not changed since the last page, don't print it.
+    if ((profiles_in_DCA == prev_profiles_in_DCA) and
+        (current_DCA_names == prev_DCA_names)):
+      continue
+    tracefile.write (format_pageno(this_page).rjust(8))
+    for DCA_number in range (0,DCA_count):
+      tracefile.write (",")
+      tracefile.write (current_DCA_names[DCA_number].rjust(16))
+    tracefile.write("\n")
+
+  tracefile.write ("End of DCA summary.\n")
+
+#
 # Output a file showing when each microphone must be switched on
 # and off.  When switching a microphone on, indicate its group,
 # if one was specified.  If a microphone stays on but changes
@@ -3698,7 +3924,7 @@ for this_page in page_list:
     if (len(turn_off_list) > 0):
       if (len(microphone_list) == 0):
         listfile1.write ("(All off.)")
-        listfile2.write ("Note that all microphones are now off.")
+        listfile2.write ("Note that all microphones are now off.\n")
       else:
         if (len(microphone_list) == 1):
           listfile1.write ("(Still on: " + str(microphone_list[0]) + ".)")
@@ -3745,7 +3971,7 @@ for this_page in page_list:
     prev_page = this_page
 
 if (len(prev_microphone_list) != 0):
-  print ("Michophones still on at end of show.")
+  print ("Some microphones are still on at end of show.")
   error_counter = error_counter + 1
   microphone_cue_count = microphone_cue_count + 1
   listfile1.write ("\\vbox {\parbox[t]{0.3in}{" +
