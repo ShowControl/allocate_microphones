@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.6 2019-06-29',
+                     version='allocate_microphones 3.8 2019-07-08',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -2955,8 +2955,14 @@ if (do_trace == 1):
   pprint.pprint (profile_list, tracefile)
 
 # Give each profile an ID
+profiles_by_ID = dict()
 for ID, profile in enumerate(profile_list):
   profile["ID"] = ID+1
+  profiles_by_ID[ID+1] = profile
+
+if (do_trace == 1):
+  tracefile.write ("Profiles by ID:\n")
+  pprint.pprint (profiles_by_ID, tracefile)
   
 if (do_trace == 1):
   tracefile.write ("profile_list 5:\n")
@@ -3080,93 +3086,6 @@ if (do_trace == 1):
   tracefile.write ("DCAs 1:\n")
   pprint.pprint (DCAs, tracefile)  
 
-# Find a good DCA for this group on this page.  In solo style, the blank
-# group goes in DCA 0, named Solo.  Nothing else goes there.
-# Otherwise, prefer the previously used DCA, if it isn't being used.
-# If it is, find the least-occupied unused DCA.  If there is no DCA
-# that is unused for this page, share the one that is least used.
-# If a group prefers a particular DCA, use it if it is available,
-# and even if it is not, if no DCA is unused.
-
-def find_good_DCA (this_group, this_page):
-  if (do_trace == 1):
-    tracefile.write ("Finding a good DCA for group " + this_group["name"] +
-                     ":\n")
-    pprint.pprint (this_group, tracefile)
-    tracefile.write ("and page:\n")
-    pprint.pprint (this_page, tracefile)
-  old_DCA_number = -1
-  if ("old_DCA_number" in this_group):
-    old_DCA_number = this_group["old_DCA_number"]
-    this_DCA = DCAs[old_DCA_number]
-    DCA_pages = this_DCA["pages"]
-    if (this_page not in DCA_pages):
-      # The previously-used DCA has this page empty.  Use it.
-      return (this_DCA)
-  if ("preferred_DCA" in this_group):
-    preferred_DCA = this_group["preferred_DCA"]
-    this_DCA = DCAs[preferred_DCA]
-    DCA_pages = this_DCA["pages"]
-    if (this_page not in DCA_pages):
-      # The preferred DCA has this page empty.  Use it.
-      return (this_DCA)
-  # We must choose a DCA.  Of the DCAs with this page unused, pick the one
-  # that has the least pages used, thus spreading the profiles among the
-  # DCAs.
-  best_DCA_size = -1
-  DCA_found = 0
-  for DCA_number in DCAs:
-    this_DCA = DCAs[DCA_number]
-    if (DCA_style == "solo" and DCA_number == 0):
-      if (this_group["name"] == ""):
-        # Use the solo DCA.
-        return (this_DCA)
-      else:
-        continue
-    DCA_pages = this_DCA["pages"]
-    DCA_size = len(this_DCA["pages"])
-    if (this_page not in DCA_pages):
-      if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
-        best_DCA_size = DCA_size
-        best_DCA = this_DCA
-        DCA_found = 1
-  if (DCA_found == 1):
-    return (best_DCA)
-  # No DCA was found with this page unused.  We must share.  Use the
-  # preferred DCA if one is specified, otherwise the last DCA used.
-  # If there is no last DCA, choose the one that has the least pages
-  # used.
-  if (do_trace == 1):
-    tracefile.write ("We must share a DCA.\n")
-  if ("preferred_DCA" in this_group):
-    preferred_DCA = this_group["preferred_DCA"]
-    this_DCA = DCAs[preferred_DCA]
-    # Since all DCAs are occupied, use the preferred DCA.
-    return (this_DCA)
-  if (old_DCA_number != -1):
-    this_DCA = DCAs[old_DCA_number]
-    return (this_DCA)
-  best_DCA_size = -1
-  DCA_found = 0
-  for DCA_number in DCAs:
-    this_DCA = DCAs[DCA_number]
-    DCA_pages = this_DCA["pages"]
-    DCA_size = len(this_DCA["pages"])
-    if ((DCA_size < best_DCA_size) or (best_DCA_size == -1)):
-      if (do_trace == 1):
-        tracefile.write ("Nominating DCA " + str(DCA_number) + ".\n")
-      best_DCA_size = DCA_size
-      best_DCA = this_DCA
-      DCA_found = 1
-  if (DCA_found == 1):
-    return (best_DCA)
-  if (do_trace == 1):
-    tracefile.write ("No good DCA found.\n")
-    for DCA_number in DCAs:
-      tracefile.write ("DCA number " + str(DCA_number) + ":\n")
-      pprint.pprint (DCAs[DCA_number], tracefile)
-  return None
-
 # Assign groups to DCAs.  The groups are processed in the order
 # they were encountered.  In nosolo mode, this processes the characters
 # after the groups, in the order they were listed.  To try to get
@@ -3190,8 +3109,9 @@ if (do_trace == 1):
 # The score for each DCA in each page is the number of pages already
 # used by the DCA, plus 10000 if we must switch DCAs, plus 100000000 if
 # we must share a DCA.
-# If prev_DCA_number is None, we return the best choice of DCA number.
-# Otherwise, we prefer the prev_DCA_number.
+# If prev_DCA is None, we do not consider switching DCAs.
+# group_pages is the pages to search.  If group_pages is empty,
+# we are at a tip of the search tree.
 # In Solo style, the blank group is always assigned to DCA 0.
 def find_good_DCAs (this_group, group_pages, prev_DCA_number, search_cache):
   if (do_trace > 1):
@@ -3275,6 +3195,8 @@ def find_good_DCAs (this_group, group_pages, prev_DCA_number, search_cache):
                                                    best_DCA_assignments)
   return ((best_score, [best_DCA_number] + best_DCA_assignments))
 
+# Assign DCAs to a particular group.  Track poor assignments
+# for reporting purposes.
 worst_score = 0
 worst_group = ""
 poorly_allocated_groups = list()
@@ -3351,6 +3273,7 @@ def assign_DCA (group_number):
   return
 
 # Assign groups to their preferred DCAs, if possible.
+# DCA_priority lets characters allocate before groups.
 for DCA_priority in DCA_priorities:
   if (do_trace == 1):
     tracefile.write ("Working on DCA_priority " + str(DCA_priority) + ".\n")
@@ -3368,7 +3291,11 @@ if (do_trace == 1):
   tracefile.write ("DCAs 2:\n")
   pprint.pprint (DCAs, tracefile)  
 
+# Assign groups to DCAs.  Those groups and characters with preferred DCAs
+# get first choice, the others choose afterwards.  
+  
 # Assign groups without preferred DCAs.
+# DCA priority lets characters allocate before groups.
 for DCA_priority in DCA_priorities:
   if (do_trace == 1):
     tracefile.write ("Working on DCA_priority " + str(DCA_priority) + ".\n")
@@ -3387,7 +3314,7 @@ if (do_trace == 1):
   pprint.pprint (DCAs, tracefile)  
 
 #
-# Print the names of the groups with the worst scores, so the destgner
+# Print the names of the groups with the worst scores, so the designer
 # can consider doing something about them.
 #
 if (len(very_poorly_allocated_groups) > 0):
@@ -3486,6 +3413,10 @@ if (do_trace == 1):
 # DCA_info records information about how the DCAs are used on this page.
 # It is a dictionary indexed by DCA number, with entries
 # for number, profiles and name.
+# DCA_usage records, for each page, which microphones are unmuted and
+# the name of each DCA.  No record is made for a page which duplicates
+# the previous page.
+DCA_usage = dict()
 cue_number = 1;
 prev_profiles_in_DCA = dict()
 prev_DCA_names = dict()
@@ -3551,6 +3482,7 @@ for this_page in page_list:
   if ((profiles_in_DCA == prev_profiles_in_DCA) and
       (current_DCA_names == prev_DCA_names)):
     continue
+  DCA_usage [this_page] = (profiles_in_DCA, current_DCA_names)
   
   # Write the cue line.
   listfile.write ("INSERT INTO cues VALUES (")
@@ -3592,6 +3524,10 @@ for this_page in page_list:
   prev_profiles_in_DCA = profiles_in_DCA
   
   cue_number = cue_number + 1
+  
+if (do_trace == 1):
+  tracefile.write ("DCA_usage:\n")
+  pprint.pprint (DCA_usage, tracefile)
   
 listfile.write ("CREATE TABLE 'positions' ('id' " +
                 "INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -3659,66 +3595,71 @@ listfile.close()
 #
 if (do_trace == 1):
   tracefile.write ("DCA summary:\n")
-  cue_number = 1;
-  prev_profiles_in_DCA = dict()
-  prev_DCA_names = dict()
-  for this_page in page_list:
-    page_dict = pages[this_page]
-    DCA_info = dict()
-    for DCA_number in DCAs:
-      this_DCA = DCAs[DCA_number]
-      this_DCA_info = dict()
-      this_DCA_info["number"] = DCA_number
-      DCA_info[DCA_number] = this_DCA_info
-    
-      DCA_pages = this_DCA["pages"]
-      DCA_page_found = 0
-      for the_page in DCA_pages:
-        if (the_page == this_page):
-          DCA_page = DCA_pages[the_page]
-          DCA_page_found = 1
-      if (DCA_page_found == 1):
-        DCA_name = DCA_page["name"]
-        if (DCA_name == ""):
-          DCA_name = "Solo"
-        this_DCA_info["name"] = DCA_name
-        this_DCA_info["profiles"] = DCA_page["profiles"]
-
-    # Determine the profile ID for each DCA
-    # profiles_in_DCA is a dictionary indexed by DCA number.  Each element
-    # is a list of the profile IDs used by that DCA.
-    profiles_in_DCA = dict()
-    for DCA_number in range (0,8):
-      profiles_in_DCA[DCA_number] = list()
-      this_DCA_info = DCA_info[DCA_number]
-      if ("profiles" in this_DCA_info):
-        the_profiles = this_DCA_info["profiles"]
-        for profile_ID in the_profiles:
-          profiles_in_DCA[DCA_number] = profiles_in_DCA[DCA_number] + \
-            [profile_ID]
-        
-    # Capture the current name of each DCA.
-    # Current_DCA_names is a dictionary indexed by DCA number.  The element
-    # is the name of the DCA on this page.
-    current_DCA_names = dict()
-    for DCA_number in range (0,8):
-      this_DCA_info = DCA_info[DCA_number]
-      current_DCA_names[DCA_number] = ""
-      if ("name" in this_DCA_info):
-        current_DCA_names[DCA_number] = this_DCA_info["name"]
-
-    # profiles_in_DCA and current_DCA_names have all the information we need.
-    # If it has not changed since the last page, don't print it.
-    if ((profiles_in_DCA == prev_profiles_in_DCA) and
-        (current_DCA_names == prev_DCA_names)):
-      continue
-    tracefile.write (format_pageno(this_page).rjust(8))
-    for DCA_number in range (0,DCA_count):
-      tracefile.write (",")
-      tracefile.write (current_DCA_names[DCA_number].rjust(16))
-    tracefile.write("\n")
-
+  for page_number in pages:
+    this_page = pages [page_number]
+    if (page_number in DCA_usage):
+      DCA_profiles_dict, DCA_names_dict = DCA_usage[page_number]
+      prompt = format_pageno (page_number)
+      if ("prompt" in this_page):
+        prompt = this_page["prompt"]
+      tracefile.write (prompt)
+      tracefile.write (": ")
+      for DCA_number in range (0, DCA_count):
+        DCA_profiles = DCA_profiles_dict [DCA_number]
+        DCA_name = DCA_names_dict [DCA_number]
+        microphone_list = list()
+        for profile_ID in DCA_profiles:
+          profile = profiles_by_ID[profile_ID]
+          microphone_list = microphone_list + [profile["microphone"]]
+        if (len(microphone_list) > 0):
+          tracefile.write (DCA_name)
+          tracefile.write ("(")
+          first_microphone = 1
+          for microphone in microphone_list:
+            if (first_microphone == 0):
+              tracefile.write (",")
+            first_microphone = 0
+            tracefile.write (str(microphone))
+          tracefile.write (")")
+        tracefile.write ("|")
+      tracefile.write ("\n")
   tracefile.write ("End of DCA summary.\n")
+
+#
+# Output a file summarizing DCA usage, showing on which page each
+# DCA is in use, what its name it, and which microphones are being
+# heard thoough it.
+#
+listfile = open (os.path.join (output_directory, output_root) +
+                 ".DCA_usage.tex", "wt")
+for page_number in pages:
+  this_page = pages [page_number]
+  if (page_number in DCA_usage):
+    DCA_profiles_dict, DCA_names_dict = DCA_usage[page_number]
+    prompt = format_pageno (page_number)
+    if ("prompt" in this_page):
+      prompt = this_page["prompt"]
+    listfile.write ("\\raggedright " + prompt)
+    for DCA_number in range (0, DCA_count):
+      listfile.write ("&")
+      DCA_profiles = DCA_profiles_dict [DCA_number]
+      DCA_name = DCA_names_dict [DCA_number]
+      microphone_list = list()
+      for profile_ID in DCA_profiles:
+        profile = profiles_by_ID[profile_ID]
+        microphone_list = microphone_list + [profile["microphone"]]
+      if (len(microphone_list) > 0):
+        listfile.write ("\\centering " + DCA_name)
+        listfile.write ("\\\\ (")
+        first_microphone = 1
+        for microphone in microphone_list:
+          if (first_microphone == 0):
+            listfile.write (", ")
+          first_microphone = 0
+          listfile.write (str(microphone))
+        listfile.write (")")
+    listfile.write ("\\tabularnewline\\hline\n")
+listfile.close()
 
 #
 # Output a file showing when each microphone must be switched on

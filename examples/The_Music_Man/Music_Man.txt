@@ -1,13 +1,13 @@
 // The Music Man, John Sauter, April 12, 2011
-// Updated for X32 Theatre Control Support June 2, 2019.
+// Updated for X32 Theatre Control Support July 7, 2019.
 
 [show The Music Man]
 Venue=Manchester Community Theater
 Designer=John Sauter
-DateNumeric=2019-06-23
-DateText=June 23, 2019
+DateNumeric=2019-07-08
+DateText=July 8, 2019
 
-[microphones 32]
+[microphones 24]
 [DCA 8]
 style=nosolo
 
@@ -23,7 +23,6 @@ group=Quartet
 group=Quartet
 [character Olin]
 group=Quartet
-[character Constable Locke]
 [character Charlie Cowell]
 [character Mayor Shinn]
 [character Eulalie]
@@ -38,6 +37,7 @@ group=Quartet
 [character Maud]
 [character Mrs. Squires]
 [character Gracie]
+[character Constable Locke]
 [character Conductor]
 [character Salesman #1]
 group=Train passengers
@@ -60,18 +60,18 @@ group=Train passengers
 [character Newspaper Reader #5]
 group=Train passengers
 [character Man page 11]
-group=Men
+group=Men Act 1
 [character Boy page 11]
-group=Boys
+group=Boys Act 1
 [character contrary solo page 11]
 [character Farmer page 12]
-group=Men
+group=Men Act 1
 [character Wife page 12]
-group=Women
+group=Women Act 1
 [character Man page 35]
-group=Men
+group=Men Act 1
 [character Man #2 page 35]
-group=Men
+group=Men Act 1
 [character 1st voice page 67]
 group=WFW soloists
 [character 2nd voice page 67]
@@ -95,33 +95,33 @@ group=WFW soloists
 [character 11th voice page 69]
 group=WFW soloists
 [character Boy page 77]
-group=Boys
+group=Boys Act 2
 [character Man #1 page 108]
-group=Men
+group=Men Act 2
 [character Man #1 page 109]
-group=Men
+group=Men Act 2
 [character Man #2 page 109]
-group=Men
+group=Men Act 2
 [character Woman page 109]
-group=Women
+group=Women Act 2
 [character Man #1 page 114]
-group=Men
+group=Men Act 2
 [character Man #3 page 114]
-group=Men
+group=Men Act 2
 [character Woman #1 page 114]
-group=Women
+group=Women Act 2
 [character Man #2 page 114]
-group=Men
+group=Men Act 2
 [character Woman #3 page 114]
-group=Women
+group=Women Act 2
 [character Woman #2 page 114]
-group=Women
+group=Women Act 2
 [character Man #1 page 115]
-group=Men
+group=Men Act 2
 [character Man #2 page 115]
-group=Men
+group=Men Act 2
 [character Woman page 115]
-group=Women
+group=Women Act 2
 [character Driver]
 [character Stranger]
 preferred_DCA=0
@@ -1207,20 +1207,43 @@ prompt=80: ``a button hook in the well-water.''
 [page 82a]
 [duration 60]
 [page 82b]
-prompt=80: ``Why any night this week ---''
+prompt=82: ``Why any night this week ---''
 [duration 30]
 [exit Harold]
 [speaking Ethel]
 [speaking Alma]
+group=pick-a-little
 [speaking Maud]
+group=pick-a-little
 [speaking Mrs. Squires]
+group=pick-a-little
 [begin song 34 Pick-a-Little, Talk-a-Little (Reprise)]
+[page 82c]
+prompt=82: ``please join our Del Satre Committee''
+[speaking Ethel]
+group=pick-a-little
+[speaking Alma]
+group=
 [page 83a]
-[duration 15]
+prompt=83: ``where a woman's heart should be!''
+[speaking Alma]
+group=pick-a-little
 [page 83b]
-prompt=83: ``Rabelais!''
-[duration 15]
+prompt=83: ``and we simply adored them all!''
+[speaking Alma]
+group=
+[speaking Ethel]
+group=
 [enter Eulalie]
+[page 83c]
+prompt=83: ``Bal-zac''
+[duration 15]
+[speaking Alma]
+group=pick-a-little
+[speaking Ethel]
+group=pick-a-little
+[speaking Eulalie]
+group=pick-a-little
 [page 84a]
 [end song 34 Pick-a-Little, Talk-a-Little (Reprise)]
 [page 84b]
@@ -1231,6 +1254,7 @@ prompt=84: (whispered) ``Cheep!''
 [exit Mrs. Squires]
 [exit Marian]
 [exit Eulalie]
+
 [page 84c]
 prompt=84: Scene two opens
 [scene 2]
@@ -1406,7 +1430,7 @@ prompt=109: Harold enters at end of chase
 prompt=110: ``Please , hurry, please ---''
 [enter Marcellus]
 [page 110b]
-prompt=110: ``Let's try down my the crick!''
+prompt=110: ``Let's try down by the crick!''
 [exit Marcellus]
 [enter Winthrop]
 [page 112a]

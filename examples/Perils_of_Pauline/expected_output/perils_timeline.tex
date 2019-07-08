@@ -1,0 +1,41 @@
+\documentclass[letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{color}
+\usepackage[top=0.5in,bottom=0.75in,left=0.5in,right=0.5in,includehead,head=12pt,headsep=0.2in,includefoot,foot=12pt,footskip=0.25in]{geometry}
+\usepackage{multicol}
+\usepackage{array}
+\usepackage{longtable}
+\setcounter{secnumdepth}{0}
+\setcounter{tocdepth}{0}
+% Pages styles
+\makeatletter
+\newcommand\ps@Standard{
+  \renewcommand\@oddhead{Timeline for The Perils of Pauline\hfill
+    September 6, 2016}
+  \renewcommand\@evenhead{\@oddhead}
+  \renewcommand\@oddfoot{\hfil Page {\thepage} \hfil}
+  \renewcommand\@evenfoot{\@oddfoot}
+  \renewcommand\thepage{\arabic{page}}
+}
+\makeatother
+\pagestyle{Standard}
+\setlength\tabcolsep{1mm}
+\renewcommand\arraystretch{1.3}
+\title{Timeline for The Perils of Pauline}
+\author{John Sauter}
+\date{2016-09-06}
+\begin{document}
+\maketitle
+%\tableofcontents
+\newpage
+
+\section {Timeline}
+The following timeline was computed by {\tt allocate\_microphones}.
+It is presented here mostly for debugging the input to that program,
+which also computes the tables in the Microphones section.
+
+\input perils.txt.activities.tex
+
+\end{document}

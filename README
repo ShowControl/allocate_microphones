@@ -138,7 +138,7 @@ actors appear on stage at the same time.  This example is good for
 illustrating the syntax of the play description file, but a longer
 example is needed to show the value of using a program to
 allocate microphones.  See "The Music Man" in the examples directory,
-which used 24 microphones to cover 42 actors.
+which uses 24 microphones to cover 46 actors.
 
 The output of the allocate_microphones program is several tables,
 formatted as fragments of a LaTeX document.  Each table is in a
@@ -186,6 +186,14 @@ between groups.
 in an expanded form, with character names.  If you have a mixer
 board with a sequencer, this list is intended for the person
 who programs the sequencer.
+
+.DCA_usage
+	Summarizes the microphone switching information, showing which
+microphone is in which DCA on each page.  If you have a sequencer which
+can rename DCAs on each cue, you can use this display to debug your
+sequencer programming.  In addition, if characters have been allocated
+poorly to DCAs, this overview can guide you into gathering characters
+into groups, or splitting groups between acts.
 
 .parameters.tex
 	Contains the show name and whatever was specified after
@@ -302,9 +310,9 @@ slider for each actor.  How do I do this?
 
 A: First, you will need a relatively modern mixing board which
 allows several microphones to be routed through a common volume
-control slider before they are sent to the speakers.  You can
-then use the group=<name> clauses to specify that certain microphones
-are in the designated groups.  You can specify a default group
+control slider known as a DCA before they are sent to the speakers.
+You can then use the group=<name> clauses to specify that certain
+microphones are in the named groups.  You can specify a default group
 for a character, and override that whenever the character
 enters or begins speaking.  The group name is shown in the
 microphone switching section, so you will know into which group
@@ -334,7 +342,8 @@ how it is failing.
 A: I encountered this problem often in development.  You can specify
 an additional output file using --trace <file name> which receives
 lots of information about how the program is processing its input
-file.  Use that file for insight on the internal processing.
+file.  Use that file together with the source code for insight on
+the internal processing.
 
 Q: What other programs must I install to use this program?
 
@@ -417,13 +426,13 @@ prompt=<text>	// The line or action that triggers the cue (page).
 speaks=no		// the character does not speak during this appearance,
 			// hence needs no microphone
 group=<name>		// the character is in the named group for this page
-[exit <name>]		// the character leaves the stage, or ceases
+[exit <name>]		// the named character leaves the stage, or ceases
 			// being heard off-stage
-[speak <name>]		// The character speaks on this page
+[speak <name>]		// The named character speaks on this page
 group=<name>		// the character is in the named group for this page
-[speaking <name>]	// The character speaks until quieted
+[speaking <name>]	// The named character speaks until quieted
 group=<name>		// the character is in the named group for this page
-[quiet <name>]		// The character stops speaking
+[quiet <name>]		// The named character stops speaking
 [intermission]		// Everyone leaves the stage for about 15 minutes
 [end show]		// Everyone leaves the stage until the next performance
 
@@ -435,9 +444,11 @@ a preferred DCA for a character or group does not mean that some other
 DCA won't be used if necessary.
 
 Actors early in the actor list have priority over those below them
-for keeping their microphones.  Similarly, groups get first choice
-of DCAs in the order they are listed, followed by characters in the
-order they are listed.
+for keeping their microphones.  Similarly, characters get first choice
+of DCAs in the order they are listed, followed by groups in the
+order they are listed.  This can be overridden by specifying a
+preferred DCA for a group or character.  Characters and groups
+with a preferred DCA get first chance at their DCAs.
 
 To facilitate use during early rehearsals, not all characters need
 to be cast.  If the actor who is to play a character
@@ -459,24 +470,24 @@ microphones, loaning them to other actors when necessary.
 
 Mixers with DCAs and sequencers.
 
-Mixers with digitally-controlled amplifiers and sequencers have
+Mixers with digitally-controlled amplifiers (DCAs) and sequencers have
 become affordable.  Allocate_microphones supports two ways of using
 these modern mixers: solo and nosolo.
 
 Solo style, which is the default, assigns characters who are not in a group
 to DCA channel 0, named Solo.  Groups are spread across the other DCAs so
-you can have a slider for each active group.  You can assign a group to
-a particular DCA.  This style uses the sequencer to control the mutes
-and so requires lots of cues.
+you can have a volume slider for each active group.  If you wish you can
+assign a group to a particular DCA.  Running all the microphones through
+the DCAs gives you a more compact control surface for the active microphones.
 
 Nosolo style places characters who are not in a group into DCAs as though
 they were in a group named for the character.  All groups and characters
-are then spread across the DCAs.  You can assign groups and characters
-to DCAs, but they may get moved to others if needed.
-In nosolo style you can use many fewer cues,
-and use the DCA sliders or mutes to turn microphones on and off
-between cues.  This style requires fewer cues, but depends more on
-the mixing board operator between cues.
+are then spread across the DCAs.  The program attempts to keep groups
+and characters in the same DCA whenever they are active.
+You can assign groups and characters to DCAs, but they may get moved
+to others if needed.  In nosolo style you can choose to define just one
+cue per scene and let the mixer operator use the DCA mutes or volume
+sliders to control the live microphones within each scene as needed.
 
 If you have a Behringer X32 mixer and the X32 Theatre Control program
 to drive it, allocate_microphones outputs an sqlite3 database which
@@ -495,17 +506,33 @@ The Amherst PTA produced Merideth Wilson's "The Music Man" in April of 2011.
 We had 42 actors who needed microphones, but the theatre could support only
 24 microphones.  Early in rehearsal the music director asked people to
 volunteer for the 11 solo parts in Wells Fargo Wagon.  To encourage
-volunteers I promised that everyone would get a microphone.
+volunteers I promised that every volunteer would get a microphone.
 That promise led to the writing of this program.
 
-When you read examples/The_Music_man/music_man.txt you will see that
-the first 12 microphones are pre-allocated to the
+In the 2011 production I did not have a mixer with a sequencer
+so I dod not use any groups.  To make the mixer operator's job
+easier, the first 12 microphones were pre-allocated to the
 principals.  The quartet and the featured pick-a-little ladies
-are kept together to make operating their mute buttons easier,
-and Eulalie is adjacent to both her husband and the featured
+were kept together to make operating their mute buttons easier,
+and Eulalie was adjacent to both her husband and the featured
 pick-a-little ladies.  Assigning a microphone to Mrs. Paroo
 was done at the last minute, since the actress was unable to
-share a microphone because of her wig.
+share a microphone because of her wig.  As a result the wagon driver
+and the boy on page 11 did not have microphones.
+
+In 2019 I had a second chance to do The Music Man, this time using
+a mixer with a sequencer and DCAs.  I created groups for the
+quartet and the pick-a-little ladies, which caused them to be
+controlled using a single volume slider.  Rather than use Solo
+mode, I created more groups to fit everyone else onto the
+eight available DCAs.  The Wells Fargo Wagon soloists have their
+own group, as do the unnamed men, women and boys.  The software
+tries to allocate each character to the same DCA whenever his
+microphone is live.  I let the nameless characters use different
+DCAs in different acts, so the named characters would have a
+better opportunity to be allocated to the same DCA.  Although
+I will have 32 microphones in 2019, the example of The Music Man
+shows how to make the show work with only 24 microphones.
 
 The program allocate_microphones is distributed
 using the Autotools package.  See the INSTALL file

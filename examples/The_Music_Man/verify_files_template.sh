@@ -1,5 +1,5 @@
 #!/bin/bash
-# File: verify_files_template.sh date: June 9, 2019, Author: John Sauter
+# File: verify_files_template.sh date: July 7, 2019, Author: John Sauter
 # This file is executed as verify_files.sh to check allocate_microphones.
 
 if [[ !("Music_Man_microphones.pdf" -nt "Music_Man.txt") ]]; then 
@@ -89,6 +89,12 @@ if [[ $diff_result -ne 0 ]]; then
 fi
 
 diff -q Music_Man.txt.parameters.tex expected_output/Music_Man.txt.parameters.tex
+diff_result=$?
+if [[ $diff_result -ne 0 ]]; then
+  exit $diff_result
+fi
+
+diff -q Music_Man.txt.DCA_usage.tex expected_output/Music_Man.txt.DCA_usage.tex
 diff_result=$?
 if [[ $diff_result -ne 0 ]]; then
   exit $diff_result

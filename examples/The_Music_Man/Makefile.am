@@ -9,6 +9,7 @@ expected_output/Music_Man.txt.microphone_labels.tex \
 expected_output/Music_Man.txt.microphone_moves.tex \
 expected_output/Music_Man.txt.microphone_switching.tex \
 expected_output/Music_Man.txt.parameters.tex \
+expected_output/Music_Man.txt.DCA_usage.tex \
 expected_output/Music_Man.txt.stage_manager_after_show.tex \
 expected_output/Music_Man.txt.stage_manager_at_intermission.tex \
 expected_output/Music_Man.txt.stage_manager_before_show.tex \
@@ -38,7 +39,7 @@ Music_Man.txt.stage_manager_at_intermission.tex \
 Music_Man.txt.stage_manager_before_show.tex \
 Music_Man.txt.stage_manager_during_show.tex \
 Music_Man_microphones.out Music_Man_timeline.out \
-verify_files.sh Music_Man.txt.X32TC.txt
+verify_files.sh Music_Man.txt.X32TC.txt Music_Man.txt.DCA_usage.tex
 
 Music_Man.txt.activities.tex : Music_Man.txt
 	if [ ! -r "Music_Man.txt" ] ; then cp -v $(srcdir)/Music_Man.txt . ; fi
