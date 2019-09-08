@@ -1,3 +1,9 @@
+2019-09-04	Allow the # characterin DCA names.  There is a bug, as yet
+		unfixed, which causes the program to get confused about which
+		group a microphone should be in if an actor is playing two
+		different characters who are in different groups but are on
+		stage together.  Version 3.9.
+
 2019-07-08	Summarize the microphone switching information using
 		DCA allocation.  Version 3.8.
 

@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.8 2019-07-08',
+                     version='allocate_microphones 3.9 2019-09-03',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -175,6 +175,8 @@ microphone_limit = 0
 def microphones_start(value):
   global microphone_limit
   global error_counter
+  if (do_trace == 1):
+    tracefile.write ("Setting microphone limit to " + str(value) + ".\n")
   try:
     microphone_limit = int(value)
   except ValueError:
@@ -797,6 +799,7 @@ def enter_start (value):
 def enter_keyword_value (keyword, value):
   global error_counter
   global current_character_record
+  global character_current_group
   the_character = current_character_record [0]
   character_name = the_character ["name"]
   if ((keyword == "speaks") and (value == "no")):
@@ -827,6 +830,7 @@ def enter_end ():
 # the character speaks during this page, or part of a page
 def speak_start (character_name):
   global current_character_record
+  global character_current_group
   global error_counter
   if (character_name not in characters):
     print ("Character " + character_name + " is unknown.")
@@ -852,6 +856,7 @@ def speak_start (character_name):
 def speak_keyword_value (keyword, value):
   global error_counter
   global current_character_record
+  global character_current_group
   if (keyword == "group"):
     character_record = current_character_record
     the_character = character_record [0]
@@ -877,6 +882,7 @@ def speak_end ():
 # a page, and does not stop until quieted
 def speaking_start (character_name):
   global current_character_record
+  global character_current_group
   the_character = characters [character_name]
   group = character_current_group [character_name]
   character_record = [the_character, -1, group]
@@ -893,6 +899,7 @@ def speaking_start (character_name):
 def speaking_keyword_value (keyword, value):
   global error_counter
   global current_character_record
+  global character_current_group
   if (keyword == "group"):
     character_record = current_character_record
     the_character = current_character_record [0]
@@ -989,6 +996,8 @@ if (do_trace == 1):
 infile = open (file_name, 'rt')
 
 for line in infile:
+  if (do_trace == 1):
+    tracefile.write ("Processing line: " + line);
   if (re.match ("^\s*(//.*)?\n$", line)):
     continue;                   #  ignore blank lines and comments.
   matcha = re.match (
@@ -1743,6 +1752,8 @@ max_microphone = max_microphone + extra_microphones
 # If the number of microphones was specified in the input file, use that number.
 if (microphone_limit != 0):
   max_microphone = microphone_limit
+  if (verbosity_level > 0):
+    print ("Using " + str(max_microphone) + " microphones.")
 
 # microphone_info is a dictionary indexed by microphone number.  It holds
 # the last actor to wear the microphone, and the time it was removed from him.
@@ -1780,6 +1791,7 @@ def assign_microphone (an_actor, current_page):
       last_actor = "", removal_time = 0)
     microphones.append(max_microphone)
   if (do_trace):
+    tracefile.write ("Microphones: ")
     pprint.pprint (microphones, tracefile)
 # If the actor previously wore a microphone, try to get it back
 # for him provided there has been enough time to switch
@@ -1810,7 +1822,8 @@ def assign_microphone (an_actor, current_page):
   if (the_microphone == 0):
 # Otherwise, look for a microphone not previously worn.
     if (do_trace):
-      tracefile.write ("Actors: " + str(actors))
+      tracefile.write ("Actors: ")
+      pprint.pprint (actors, tracefile)
     for other_microphone in microphones:
       microphone_was_used = 0
       for other_actor in actors:
@@ -2054,7 +2067,8 @@ if (verbosity_level > 0):
 # Character_log remembers which characters are speaking on each page,
 # which actor is being the character, which microphone the actor
 # is using, which group he is in and the name of one of the underlying
-# characters.  Note that an actor may be more than one character.
+# characters.  Note that an actor may be more than one character and
+# thus be in more than one group.
 #
 # Character_log is indexed by page and microphone.  The value is a list
 # with these items:
@@ -3649,7 +3663,7 @@ for page_number in pages:
         profile = profiles_by_ID[profile_ID]
         microphone_list = microphone_list + [profile["microphone"]]
       if (len(microphone_list) > 0):
-        listfile.write ("\\centering " + DCA_name)
+        listfile.write ("\\centering " + quote_for_tex(DCA_name))
         listfile.write ("\\\\ (")
         first_microphone = 1
         for microphone in microphone_list:
