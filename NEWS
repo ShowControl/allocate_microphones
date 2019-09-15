@@ -1,3 +1,5 @@
+2019-09-15	Start work on a test suite, with one test.  Version 3.10.
+
 2019-09-04	Allow the # characterin DCA names.  There is a bug, as yet
 		unfixed, which causes the program to get confused about which
 		group a microphone should be in if an actor is playing two

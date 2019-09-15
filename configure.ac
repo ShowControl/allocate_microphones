@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([allocate_microphones],[3.9],[John_Sauter@systemeyescomputerstore.com])
+AC_INIT([allocate_microphones],[3.10],[John_Sauter@systemeyescomputerstore.com])
 AM_INIT_AUTOMAKE([tar-pax dist-bzip2 no-dist-gzip]) 
 AC_CONFIG_SRCDIR([src/allocate_microphones])
 AM_MAINTAINER_MODE
@@ -25,7 +25,9 @@ AC_CONFIG_FILES([Makefile
                  examples/Makefile
                  examples/Perils_of_Pauline/Makefile
                  examples/The_Music_Man/Makefile
-                 man/Makefile
+                 tests/Makefile
+                 tests/test001/Makefile
+		 man/Makefile
                  src/Makefile])
 AC_OUTPUT
 
