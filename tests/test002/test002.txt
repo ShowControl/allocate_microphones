@@ -1,15 +1,20 @@
-[show test001]  // one actor, one character
+[show test002]  // one actor, one character
 Designer=John Sauter
-DateNumeric=2019-09-15
-DateText=September 16, 2019
+DateNumeric=2019-09-22
+DateText=September 22, 2019
 
 [character character_01]
+[character character_02]
 
 [actor actor_01]
+[actor actor_02]
 
 [role]
 actor=actor_01
 character=character_01
+[role]
+actor=actor_02
+character=character_02
 
 [page 1]
 [act 1]
@@ -17,6 +22,9 @@ character=character_01
 [enter character_01]
 [page 2]
 [exit character_01]
+[enter character_02]
+[page 3]
+[exit character_02]
 
 [end show]
 

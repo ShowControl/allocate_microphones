@@ -531,7 +531,7 @@ tries to allocate each character to the same DCA whenever his
 microphone is live.  I let the nameless characters use different
 DCAs in different acts, so the named characters would have a
 better opportunity to be allocated to the same DCA.  Although
-I will have 32 microphones in 2019, the example of The Music Man
+I will have 29 microphones in 2019, the example of The Music Man
 shows how to make the show work with only 24 microphones.
 
 The program allocate_microphones is distributed

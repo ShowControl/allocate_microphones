@@ -13,33 +13,63 @@ fi
 mkdir tests/${testname}
 
 # Using the first test as a template, copy the necessary files into this
-# new test directory.
-rsync -a tests/test001/ tests/${testname}
+# new test directory, renaming them and updating their contents.
 
-# rename the files.
-function rename_file () {
+# copy and update a file or directory.
+function copy_and_update_file () {
     local inner_file_name=$1
+    local inner_target_file_name=$2
+    #echo "inner file name: ${inner_file_name}."
+    #echo "inner target file name: ${inner_target_file_name}."
     if [ -d ${inner_file_name} ]; then
+	local new_directory_name=${inner_target_file_name}
+	mkdir ${new_directory_name}
+	#echo "make directory ${new_directory_name}."
 	for inner_inner_file_name in ${inner_file_name}/* ; do
-	    rename_file "${inner_inner_file_name}"
+	    #echo "inner inner file name: ${inner_inner_file_name}."
+	    local base_inner_file_name=${inner_inner_file_name##*/}
+	    #echo "base inner file name: ${base_inner_file_name}."
+	    local base_inner_target_file_name=${base_inner_file_name//test001/${testname}}
+	    #echo "base inner target file name: ${base_inner_target_file_name}."
+	    local inner_inner_target_file_name="${new_directory_name}/${base_inner_target_file_name}"
+	    #echo "inner inner target file name: ${inner_inner_target_file_name}."
+	    copy_and_update_file ${inner_inner_file_name} ${inner_inner_target_file_name}
 	done
     else
-	local prefix=${inner_file_name%/*}
-	local old_suffix=${inner_file_name##*/}
-	local new_suffix_a=${old_suffix%%test001*}
-	local new_suffix_b=${old_suffix##*test001}
-	if [ ".${old_suffix}." != ".${new_suffix_a}." ]; then
-	       mv -v "${inner_file_name}" "${prefix}/${new_suffix_a}${testname}${new_suffix_b}"
-	fi
+	#echo " new file: ${inner_target_file_name}."
+	gawk --source="{ gsub(/test001/, \"${testname}\"); print }" \
+	     ${inner_file_name} >${inner_target_file_name}
     fi
 }
 
 
-for file_name in tests/${testname}/*; do
-    rename_file "${file_name}"
+for file_name in tests/test001/*; do
+    target_file_name=${file_name//test001/${testname}}
+    copy_and_update_file "${file_name}" "${target_file_name}"
 done
 
-# Edit the verious files.
-# TODO
+# Update configure.ac and tests/Makefile.am to include the new test.
+
+gawk --source="/test001/{print;print \"\t\t tests/${testname}/Makefile\";next}1" configure.ac >configure_temp.ac
+rm configure.ac
+mv configure_temp.ac configure.ac
+
+echo -n "SUBDIRS =" >Makefile_temp.ac
+for file_name in tests/*; do
+    if [ -d ${file_name} ]; then
+	test_name=${file_name##*/}
+	echo -n "${test_name} " >> Makefile_temp.ac
+    fi
+done
+echo "" >>Makefile_temp.ac
+rm tests/Makefile.am
+mv Makefile_temp.ac tests/Makefile.am
+
+# Rebuild the Makefiles.
+./bash autogen.sh --download
+./configure
+make
+make check
+make distcheck
 
 # End of file create_new_test.sh
