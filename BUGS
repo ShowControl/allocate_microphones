@@ -1,8 +1,0 @@
-If an actor is playing two characters who are on stage at the same time
-but are in different groups, there is confusion about which group the
-microphone should be in when each character speaks.
-
-The data is correct in on_stage, but when constructing microphone_log we
-keep the group of only the last character seen.  I think we need to remove
-group information from actors and remember it only in characters.  This
-applies also to character_log, which is built from microphone_log.

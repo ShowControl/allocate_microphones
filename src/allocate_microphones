@@ -55,7 +55,7 @@ parser = argparse.ArgumentParser (
 parser.add_argument ('input_file',
                      help='the description of the play')
 parser.add_argument ('--version', action='version', 
-                     version='allocate_microphones 3.11 2019-09-22',
+                     version='allocate_microphones 3.12 2019-09-29',
                      help='print the version number and exit')
 parser.add_argument ('--trace', metavar='trace_file',
                      help='write trace output to the specified file')
@@ -1703,7 +1703,7 @@ for pageno in page_list:
     actor_speaks = 0
     for [other_actor, the_character, speaks, group] in on_stage [pageno]:
       if (other_actor == the_actor):
-        if (speaks > 0):
+        if (speaks > 1):
           actor_speaks = 1
           break
     if (actor_speaks == 1):
@@ -1994,7 +1994,8 @@ for pageno in page_list:
   for the_actor in actors:
     for [other_actor, the_character, speaks, group] in on_stage[pageno]:
       if ((other_actor == the_actor) and (speaks > 0)):
-        the_actor ["group"] = group
+        if (speaks > 1):
+          the_actor ["group"] = group
 # actors returning to the stage and speaking need microphones
         if (the_actor ["microphone"] == 0):
           if ("old_microphone" in the_actor):
@@ -2004,7 +2005,8 @@ for pageno in page_list:
 # actors entering the stage for the first time and speaking get microphones
     for [other_actor, the_character, speaks, group] in on_stage[pageno]:
       if ((other_actor == the_actor) and (speaks > 0)):
-        the_actor ["group"] = group
+        if (speaks > 1):
+          the_actor ["group"] = group
         if (the_actor not in actors_by_entrance):
           actors_by_entrance = actors_by_entrance + [the_actor]
         if (the_actor ["microphone"] == 0):

@@ -66,7 +66,7 @@ rm tests/Makefile.am
 mv Makefile_temp.ac tests/Makefile.am
 
 # Rebuild the Makefiles.
-./bash autogen.sh --download
+./autogen.sh --download
 ./configure
 make
 make check

@@ -1,1 +1,1 @@
-SUBDIRS =test001 test002 
+SUBDIRS =test001 test002 test003 

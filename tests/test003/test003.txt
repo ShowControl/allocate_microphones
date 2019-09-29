@@ -1,0 +1,45 @@
+[show test003]  // one actor, two characters
+Designer=John Sauter
+DateNumeric=2019-09-29
+DateText=September 29, 2019
+
+[DCA 8]
+style=nosolo
+
+[character character_01]
+group=group_01
+[character character_02]
+group=group_02
+
+[actor actor_01]
+
+[role]
+actor=actor_01
+character=character_01
+character=character_02
+
+[page 1]
+[act 1]
+[scene 1]
+[enter character_01]
+[page 2]
+[exit character_01]
+
+[page 3]
+[enter character_02]
+[page 4]
+[exit character_02]
+
+[page 5]
+[enter character_01]
+[enter character_02]
+[quiet character_02]
+[page 6]
+[quiet character_01]
+[speaking character_02]
+[page 7]
+[exit character_01]
+[exit character_02]
+
+[end show]
+
